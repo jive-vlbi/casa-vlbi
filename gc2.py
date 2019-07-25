@@ -122,6 +122,12 @@ for data in tbhdu.data:
         gain_2 = gain_1
         sens_2 = sens_1
         pass
+    if n_band == 1:
+        type_1 = [type_1]
+        type_2 = [type_2]
+        sens_1 = [sens_1]
+        sens_2 = [sens_2]
+        pass
     gain_1 = gain_1.reshape(n_band, n_tab)
     gain_2 = gain_2.reshape(n_band, n_tab)
     if type_1[0] != 2:
