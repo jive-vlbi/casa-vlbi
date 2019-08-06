@@ -77,7 +77,6 @@ i = sys.argv.index("-c")
 
 usage = "usage %prog [options] fitsfile gcfile"
 parser = optparse.OptionParser(usage=usage)
-(options, args) = parser.parse_args(sys.argv[i+2:])
 parser.add_option("-l", "--min-elevation", type="float", dest="min",
                   help="minimum elevation", default=0)
 parser.add_option("-u", "--max-elevation", type="float", dest="max",
