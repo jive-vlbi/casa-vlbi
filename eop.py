@@ -272,7 +272,7 @@ for scan in scaninfo:
     nsteps = np.ceil(1440 * (end - start))
     for t in np.linspace(start, end, nsteps):
         t = Time(t, format="mjd")
-        t = Time(rdate.mjd + 0.544351875782, format="mjd")
+#        t = Time(rdate.mjd + 0.544351875782, format="mjd")
 
         dtcor = ut1cor(cmjd, cut1c, ctaiutc, t.jd)
         xpcor = cwobx(t.mjd) * erfa.DAS2R
