@@ -17,6 +17,7 @@
 # along with this library; if not, write to the Free Software Foundation,
 # Inc., 675 Massachusetts Ave, Cambridge, MA 02139, USA.
 #
+import inspect
 import optparse
 import datetime
 import sys
