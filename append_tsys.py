@@ -184,6 +184,11 @@ def process_values(infp, keys, pols, ref):
     return
 
 def append_tsys(antabfile, idifiles):
+    # Make sure we're dealing with a list
+    if not isinstance(idifiles, list):
+        idifiles = [idifiles]
+        pass
+
     # Check if we already have a SYSTEM_TEMPERATURES table
     try:
         hdulist = pyfits.open(idifiles[0])
