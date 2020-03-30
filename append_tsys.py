@@ -111,8 +111,8 @@ def skip_values(infp):
         continue
     return
 
-def process_values(infp, keys, pols):
-    year = tupletime.tm_year
+def process_values(infp, keys, pols, ref):
+    year = tm.gmtime(ref).tm_year
     antenna_name = find_antenna(keys[0], ['SRC/SYS'])
     if not antenna_name:
         print 'Antenna missing from TSYS group'
@@ -183,22 +183,10 @@ def process_values(infp, keys, pols):
         continue
     return
 
-if __name__ == "__main__":
-
-    # Allow this scrupt to be invoked using casa -c
-    try:
-        i = sys.argv.index("-c") + 2
-    except:
-        i = 1
-        pass
-
-    usage = "usage %prog [options] antabfile fitsfile"
-    parser = optparse.OptionParser(usage=usage)
-    (options, args) = parser.parse_args(sys.argv[i:])
-
+def append_tsys(antabfile, idifiles):
     # Check if we already have a SYSTEM_TEMPERATURES table
     try:
-        hdulist = pyfits.open(args[1])
+        hdulist = pyfits.open(idifiles[0])
         hdu = hdulist['SYSTEM_TEMPERATURE']
         print 'SYSTEM_TEMPERATURE table already present in FITS-IDI file'
         sys.exit(1)
@@ -210,8 +198,8 @@ if __name__ == "__main__":
     source_id = -1
     last_time = float("-inf")
     first_time = float("inf")
-    for arg in args[1:]:
-        hdulist = pyfits.open(arg)
+    for idifile in idifiles:
+        hdulist = pyfits.open(idifile)
         tbhdu = hdulist['UV_DATA']
         if 'SOURCE' in tbhdu.columns.names:
             source_id_col = 'SOURCE'
@@ -235,7 +223,7 @@ if __name__ == "__main__":
         continue
     idx.sort()
 
-    hdulist = pyfits.open(args[1], mode='append')
+    hdulist = pyfits.open(idifiles[0], mode='append')
     header = hdulist['ARRAY_GEOMETRY'].header
     obscode = header['OBSCODE']
     n_stokes = header['NO_STKD']
@@ -266,7 +254,7 @@ if __name__ == "__main__":
         pass
     source_map = dict(zip(tbhdu.data['SOURCE'], tbhdu.data[source_id_col]))
 
-    tupletime= tm.strptime(rdate, "%Y-%m-%d")
+    tupletime = tm.strptime(rdate, "%Y-%m-%d")
     ref = tm.mktime(tupletime)
 
     time = []
@@ -281,7 +269,7 @@ if __name__ == "__main__":
 
     pols = []
     keys = StringIO.StringIO()
-    fp = open(args[0], 'r')
+    fp = open(antabfile, 'r')
     for line in fp:
         if line.startswith('!'):
             continue
@@ -295,7 +283,7 @@ if __name__ == "__main__":
                 sys.exit(1)
                 pass
             if tsys and tsys[0] and tsys[0][0][0] == 'TSYS':
-                process_values(fp, tsys, pols)
+                process_values(fp, tsys, pols, ref)
                 pass
             keys = StringIO.StringIO()
             continue
@@ -379,3 +367,17 @@ if __name__ == "__main__":
 
     hdulist.append(tbhdu)
     hdulist.close()
+
+
+if __name__ == "__main__":
+    # Allow this scrupt to be invoked using casa -c
+    try:
+        i = sys.argv.index("-c") + 2
+    except:
+        i = 1
+        pass
+
+    usage = "usage %prog [options] antabfile idifile..."
+    parser = optparse.OptionParser(usage=usage)
+    (options, args) = parser.parse_args(sys.argv[i:])
+    append_tsys(args[0], args[1:])
