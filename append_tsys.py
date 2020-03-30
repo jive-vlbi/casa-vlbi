@@ -49,100 +49,6 @@ pyfits.register_hdu(IdiHDU)
 os.environ['TZ'] = 'UTC'
 tm.tzset()
 
-# Allow this scrupt to be invoked using casa -c
-try:
-    i = sys.argv.index("-c") + 2
-except:
-    i = 1
-    pass
-
-usage = "usage %prog [options] antabfile fitsfile"
-parser = optparse.OptionParser(usage=usage)
-(options, args) = parser.parse_args(sys.argv[i:])
-
-# Check if we already have a SYSTEM_TEMPERATURES table
-try:
-    hdulist = pyfits.open(args[1])
-    hdu = hdulist['SYSTEM_TEMPERATURE']
-    print 'SYSTEM_TEMPERATURE table already present in FITS-IDI file'
-    sys.exit(1)
-except KeyError:
-    pass
-
-# Create an index
-idx = []
-source_id = -1
-last_time = float("-inf")
-first_time = float("inf")
-for arg in args[1:]:
-    hdulist = pyfits.open(arg)
-    tbhdu = hdulist['UV_DATA']
-    if 'SOURCE' in tbhdu.columns.names:
-        source_id_col = 'SOURCE'
-    else:
-        source_id_col = 'SOURCE_ID'
-        pass
-    for data in tbhdu.data:
-        jd = data['DATE']
-        time = (jd - 2440587.5 + data['TIME']) * 86400
-        if time > last_time:
-            last_time = time
-            pass
-        if time < first_time:
-            first_time = time
-            pass
-        if data[source_id_col] != source_id:
-            source_id = data[source_id_col]
-            idx.append((time, source_id))
-            pass
-        continue
-    continue
-idx.sort()
-
-hdulist = pyfits.open(args[1], mode='append')
-header = hdulist['ARRAY_GEOMETRY'].header
-obscode = header['OBSCODE']
-n_stokes = header['NO_STKD']
-stk_1 = header['STK_1']
-n_band = header['NO_BAND']
-n_chan = header['NO_CHAN']
-ref_freq = header['REF_FREQ']
-chan_bw = header['CHAN_BW']
-ref_pixl = header['REF_PIXL']
-rdate = header['RDATE']
-
-tbhdu = hdulist['ARRAY_GEOMETRY']
-assert tbhdu.header['EXTVER'] == 1
-antennas = [s.strip() for s in tbhdu.data['ANNAME']]
-antenna_map = dict(zip(antennas, tbhdu.data['NOSTA']))
-
-tbhdu = hdulist['FREQUENCY']
-assert tbhdu.data['FREQID'][0] == 1
-freqs = tbhdu.data['BANDFREQ'][0]
-freqs = np.array(map (lambda x: x + ref_freq, freqs))
-assert len(freqs) == n_band
-
-tbhdu = hdulist['SOURCE']
-if 'ID_NO.' in tbhdu.columns.names:
-    source_id_col = 'ID_NO.'
-else:
-    source_id_col = 'SOURCE_ID'
-    pass
-source_map = dict(zip(tbhdu.data['SOURCE'], tbhdu.data[source_id_col]))
-
-tupletime= tm.strptime(rdate, "%Y-%m-%d")
-ref = tm.mktime(tupletime)
-
-time = []
-time_interval = []
-source_id = []
-antenna_no = []
-array = []
-freqid = []
-tsys_1 = []
-tsys_2 = []
-tant = []
-
 def update_map(pols, spws, spwmap, index):
     idx = 0
     if not isinstance(index, (list, tuple)):
@@ -277,99 +183,199 @@ def process_values(infp, keys, pols):
         continue
     return
 
-pols = []
-keys = StringIO.StringIO()
-fp = open(args[0], 'r')
-for line in fp:
-    if line.startswith('!'):
-        continue
-    keys.write(line)
-    if line.strip().endswith('/'):
-        keys.seek(0)
-        try:
-            tsys = key.read_keyfile(keys)
-        except RuntimeError:
-            print >>sys.stderr, "\n", keys.getvalue()
-            sys.exit(1)
-        if tsys and tsys[0] and tsys[0][0][0] == 'TSYS':
-            process_values(fp, tsys, pols)
+if __name__ == "__main__":
+
+    # Allow this scrupt to be invoked using casa -c
+    try:
+        i = sys.argv.index("-c") + 2
+    except:
+        i = 1
+        pass
+
+    usage = "usage %prog [options] antabfile fitsfile"
+    parser = optparse.OptionParser(usage=usage)
+    (options, args) = parser.parse_args(sys.argv[i:])
+
+    # Check if we already have a SYSTEM_TEMPERATURES table
+    try:
+        hdulist = pyfits.open(args[1])
+        hdu = hdulist['SYSTEM_TEMPERATURE']
+        print 'SYSTEM_TEMPERATURE table already present in FITS-IDI file'
+        sys.exit(1)
+    except KeyError:
+        pass
+
+    # Create an index
+    idx = []
+    source_id = -1
+    last_time = float("-inf")
+    first_time = float("inf")
+    for arg in args[1:]:
+        hdulist = pyfits.open(arg)
+        tbhdu = hdulist['UV_DATA']
+        if 'SOURCE' in tbhdu.columns.names:
+            source_id_col = 'SOURCE'
+        else:
+            source_id_col = 'SOURCE_ID'
             pass
-        keys = StringIO.StringIO()
+        for data in tbhdu.data:
+            jd = data['DATE']
+            time = (jd - 2440587.5 + data['TIME']) * 86400
+            if time > last_time:
+                last_time = time
+                pass
+            if time < first_time:
+                first_time = time
+                pass
+            if data[source_id_col] != source_id:
+                source_id = data[source_id_col]
+                idx.append((time, source_id))
+                pass
+            continue
         continue
-    continue
+    idx.sort()
 
-if len(pols) == 1 and pols[0] == 'L':
-    tsys_1 = tsys_2
-    pass
+    hdulist = pyfits.open(args[1], mode='append')
+    header = hdulist['ARRAY_GEOMETRY'].header
+    obscode = header['OBSCODE']
+    n_stokes = header['NO_STKD']
+    stk_1 = header['STK_1']
+    n_band = header['NO_BAND']
+    n_chan = header['NO_CHAN']
+    ref_freq = header['REF_FREQ']
+    chan_bw = header['CHAN_BW']
+    ref_pixl = header['REF_PIXL']
+    rdate = header['RDATE']
 
-cols = []
-col = pyfits.Column(name='TIME', format='1D', unit='DAYS', array=time)
-cols.append(col)
-col = pyfits.Column(name='TIME_INTERVAL', format='1E', unit='DAYS', array=time_interval)
-cols.append(col)
-col = pyfits.Column(name='SOURCE_ID', format='1J', array=source_id)
-cols.append(col)
-col = pyfits.Column(name='ANTENNA_NO', format='1J', array=antenna_no)
-cols.append(col)
-col = pyfits.Column(name='ARRAY', format='1J', array=array)
-cols.append(col)
-col = pyfits.Column(name='FREQID', format='1J', array=freqid)
-cols.append(col)
-format = '%dE' % n_band
-col = pyfits.Column(name='TSYS_1', format=format, unit='K', array=tsys_1)
-cols.append(col)
-col = pyfits.Column(name='TANT_1', format=format, unit='K', array=tant)
-cols.append(col)
-if len(pols) > 1:
-    col = pyfits.Column(name='TSYS_2', format=format, unit='K', array=tsys_2)
+    tbhdu = hdulist['ARRAY_GEOMETRY']
+    assert tbhdu.header['EXTVER'] == 1
+    antennas = [s.strip() for s in tbhdu.data['ANNAME']]
+    antenna_map = dict(zip(antennas, tbhdu.data['NOSTA']))
+
+    tbhdu = hdulist['FREQUENCY']
+    assert tbhdu.data['FREQID'][0] == 1
+    freqs = tbhdu.data['BANDFREQ'][0]
+    freqs = np.array(map (lambda x: x + ref_freq, freqs))
+    assert len(freqs) == n_band
+
+    tbhdu = hdulist['SOURCE']
+    if 'ID_NO.' in tbhdu.columns.names:
+        source_id_col = 'ID_NO.'
+    else:
+        source_id_col = 'SOURCE_ID'
+        pass
+    source_map = dict(zip(tbhdu.data['SOURCE'], tbhdu.data[source_id_col]))
+
+    tupletime= tm.strptime(rdate, "%Y-%m-%d")
+    ref = tm.mktime(tupletime)
+
+    time = []
+    time_interval = []
+    source_id = []
+    antenna_no = []
+    array = []
+    freqid = []
+    tsys_1 = []
+    tsys_2 = []
+    tant = []
+
+    pols = []
+    keys = StringIO.StringIO()
+    fp = open(args[0], 'r')
+    for line in fp:
+        if line.startswith('!'):
+            continue
+        keys.write(line)
+        if line.strip().endswith('/'):
+            keys.seek(0)
+            try:
+                tsys = key.read_keyfile(keys)
+            except RuntimeError:
+                print >>sys.stderr, "\n", keys.getvalue()
+                sys.exit(1)
+                pass
+            if tsys and tsys[0] and tsys[0][0][0] == 'TSYS':
+                process_values(fp, tsys, pols)
+                pass
+            keys = StringIO.StringIO()
+            continue
+        continue
+
+    if len(pols) == 1 and pols[0] == 'L':
+        tsys_1 = tsys_2
+        pass
+
+    cols = []
+    col = pyfits.Column(name='TIME', format='1D', unit='DAYS', array=time)
     cols.append(col)
-    col = pyfits.Column(name='TANT_2', format=format, unit='K', array=tant)
+    col = pyfits.Column(name='TIME_INTERVAL', format='1E', unit='DAYS',
+                        array=time_interval)
     cols.append(col)
-    pass
-coldefs = pyfits.ColDefs(cols)
+    col = pyfits.Column(name='SOURCE_ID', format='1J', array=source_id)
+    cols.append(col)
+    col = pyfits.Column(name='ANTENNA_NO', format='1J', array=antenna_no)
+    cols.append(col)
+    col = pyfits.Column(name='ARRAY', format='1J', array=array)
+    cols.append(col)
+    col = pyfits.Column(name='FREQID', format='1J', array=freqid)
+    cols.append(col)
+    format = '%dE' % n_band
+    col = pyfits.Column(name='TSYS_1', format=format, unit='K', array=tsys_1)
+    cols.append(col)
+    col = pyfits.Column(name='TANT_1', format=format, unit='K', array=tant)
+    cols.append(col)
+    if len(pols) > 1:
+        col = pyfits.Column(name='TSYS_2', format=format, unit='K',
+                            array=tsys_2)
+        cols.append(col)
+        col = pyfits.Column(name='TANT_2', format=format, unit='K', array=tant)
+        cols.append(col)
+        pass
+    coldefs = pyfits.ColDefs(cols)
 
-header = pyfits.Header()
-try:
-    # Attempt to use the new interfaces available in PyFITS 3.1.x and
-    # later.  The old interfaces are still available, but generate
-    # warnings that say they're deprecated.
-    header['EXTNAME'] = 'SYSTEM_TEMPERATURE'
-    header['EXTVER'] = 1
-    header['TABREV'] = 1
-    header['OBSCODE'] = obscode
-    header['NO_STKD'] = n_stokes
-    header['STK_1'] = stk_1
-    header['NO_BAND'] = n_band
-    header['NO_CHAN'] = n_chan
-    header['REF_FREQ'] = ref_freq
-    header['CHAN_BW'] = chan_bw
-    header['REF_PIXL'] = ref_pixl
-    # Repeat the reference data even though the FITS-IDI standard doesn't
-    # seem to require it.
-    header['RDATE'] = rdate
-    header['NO_POL'] = len(pols)
-    tbhdu = pyfits.BinTableHDU.from_columns(coldefs, header)
-except:
-    # Fall back on the old interfaces available in PyFits 3.0.x and
-    # earlier.
-    header.update('EXTNAME', 'SYSTEM_TEMPERATURE')
-    header.update('EXTVER', 1)
-    header.update('TABREV', 1)
-    header.update('OBSCODE', obscode)
-    header.update('NO_STKD', n_stokes)
-    header.update('STK_1', stk_1)
-    header.update('NO_BAND', n_band)
-    header.update('NO_CHAN', n_chan)
-    header.update('REF_FREQ', ref_freq)
-    header.update('CHAN_BW', chan_bw)
-    header.update('REF_PIXL', ref_pixl)
-    # Repeat the reference data even though the FITS-IDI standard doesn't
-    # seem to require it.
-    header.update('RDATE', rdate)
-    header.update('NO_POL', len(pols))
-    rows = len(tsys_1)
-    tbhdu = pyfits.core.new_table(coldefs, header, rows, False, 'BinTableHDU')
-    pass
+    header = pyfits.Header()
+    try:
+        # Attempt to use the new interfaces available in PyFITS 3.1.x
+        # and later.  The old interfaces are still available, but
+        # generate warnings that say they're deprecated.
+        header['EXTNAME'] = 'SYSTEM_TEMPERATURE'
+        header['EXTVER'] = 1
+        header['TABREV'] = 1
+        header['OBSCODE'] = obscode
+        header['NO_STKD'] = n_stokes
+        header['STK_1'] = stk_1
+        header['NO_BAND'] = n_band
+        header['NO_CHAN'] = n_chan
+        header['REF_FREQ'] = ref_freq
+        header['CHAN_BW'] = chan_bw
+        header['REF_PIXL'] = ref_pixl
+        # Repeat the reference data even though the FITS-IDI standard
+        # doesn't seem to require it.
+        header['RDATE'] = rdate
+        header['NO_POL'] = len(pols)
+        tbhdu = pyfits.BinTableHDU.from_columns(coldefs, header)
+    except:
+        # Fall back on the old interfaces available in PyFits 3.0.x
+        # and earlier.
+        header.update('EXTNAME', 'SYSTEM_TEMPERATURE')
+        header.update('EXTVER', 1)
+        header.update('TABREV', 1)
+        header.update('OBSCODE', obscode)
+        header.update('NO_STKD', n_stokes)
+        header.update('STK_1', stk_1)
+        header.update('NO_BAND', n_band)
+        header.update('NO_CHAN', n_chan)
+        header.update('REF_FREQ', ref_freq)
+        header.update('CHAN_BW', chan_bw)
+        header.update('REF_PIXL', ref_pixl)
+        # Repeat the reference data even though the FITS-IDI standard doesn't
+        # seem to require it.
+        header.update('RDATE', rdate)
+        header.update('NO_POL', len(pols))
+        rows = len(tsys_1)
+        tbhdu = pyfits.core.new_table(coldefs, header, rows, False,
+                                      'BinTableHDU')
+        pass
 
-hdulist.append(tbhdu)
-hdulist.close()
+    hdulist.append(tbhdu)
+    hdulist.close()
