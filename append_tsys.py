@@ -79,7 +79,7 @@ def update_map(pols, spws, spwmap, index):
     spws = sorted(spws)
     return
 
-def find_source(time):
+def find_source(time, first_time, last_time):
     if time < first_time or time > last_time:
         return -1
     source_id = -1
@@ -111,7 +111,8 @@ def skip_values(infp):
         continue
     return
 
-def process_values(infp, keys, pols, ref):
+def process_values(infp, keys, pols, ref, antenna_map,
+                   n_band, first_time, last_time):
     year = tm.gmtime(ref).tm_year
     antenna_name = find_antenna(keys[0], ['SRC/SYS'])
     if not antenna_name:
@@ -153,7 +154,7 @@ def process_values(infp, keys, pols, ref):
                 (tm_year, tm_yday, tm_hour, tm_min, tm_sec)
             t = tm.mktime(tm.strptime(t, "%Yy%jd%Hh%Mm%Ss"))
             days = (t + timeoff - ref) / 86400
-            source = find_source(t)
+            source = find_source(t, first_time, last_time)
             values = fields[2:]
             tsys = {'R': [], 'L': []}
             for spw in spws:
@@ -288,7 +289,8 @@ def append_tsys(antabfile, idifiles):
                 sys.exit(1)
                 pass
             if tsys and tsys[0] and tsys[0][0][0] == 'TSYS':
-                process_values(fp, tsys, pols, ref)
+                process_values(fp, tsys, pols, ref, antenna_map,
+                               n_band, first_time, last_time)
                 pass
             keys = StringIO.StringIO()
             continue
