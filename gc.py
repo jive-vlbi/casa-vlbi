@@ -104,31 +104,8 @@ def find_antenna(keys, ignore):
         return key[0]
     return None
 
-i = sys.argv.index("-c")
-
-usage = "usage %prog [options] antabfile gcfile"
-parser = optparse.OptionParser(usage=usage)
-parser.add_option("-l", "--min-elevation", type="float", dest="min",
-                  help="minimum elevation", default=0)
-parser.add_option("-u", "--max-elevation", type="float", dest="max",
-                  help="maximum elevation", default=90)
-(options, args) = parser.parse_args(sys.argv[i+2:])
-if len(args) != 2:
-    parser.error("incorrect number of arguments")
-
-antab = args[0]
-gc = args[1]
-
-tb = casac.table()
-
-outfp = tempfile.NamedTemporaryFile('w')
-
-t = time.strptime("2000y01d00h00m00s", "%Yy%jd%Hh%Mm%Ss")
-btime = time.mktime(t) + 40587.0 * 86400
-t = time.strptime("2100y01d00h00m00s", "%Yy%jd%Hh%Mm%Ss")
-etime = time.mktime(t) + 40587.0 * 86400
-
-def gain_common(gain, antenna, band, bfreq, efreq, btime, etime, outfp):
+def gain_common(gain, antenna, band, bfreq, efreq, btime, etime,
+                min_elevation, max_elevation, outfp):
     print >> outfp, band, bfreq, efreq,
     print >> outfp, btime, etime,
     print >> outfp, antenna,
@@ -144,7 +121,7 @@ def gain_common(gain, antenna, band, bfreq, efreq, btime, etime, outfp):
     except:
         gain['POLY'] = [gain['POLY']]
         pass
-    poly = transform_poly(gain['POLY'], options.min, options.max)
+    poly = transform_poly(gain['POLY'], min_elevation, max_elevation)
     for pol in ['R', 'L']:
         for i in xrange(4):
             try:
@@ -158,59 +135,89 @@ def gain_common(gain, antenna, band, bfreq, efreq, btime, etime, outfp):
     print >> outfp
     return
 
-keys = StringIO.StringIO()
-fp = open(antab, 'r')
-for line in fp:
-    if line.startswith('!'):
+def convert_gaincurve(antab, gc, min_elevation=0.0, max_elevation=90.0):
+    tb = casac.table()
+
+    outfp = tempfile.NamedTemporaryFile('w')
+
+    t = time.strptime("2000y01d00h00m00s", "%Yy%jd%Hh%Mm%Ss")
+    btime = time.mktime(t) + 40587.0 * 86400
+    t = time.strptime("2100y01d00h00m00s", "%Yy%jd%Hh%Mm%Ss")
+    etime = time.mktime(t) + 40587.0 * 86400
+
+    keys = StringIO.StringIO()
+    fp = open(antab, 'r')
+    for line in fp:
+        if line.startswith('!'):
+            continue
+        keys.write(line)
+        if line.strip().endswith('/'):
+            keys.seek(0)
+            gain = key.read_keyfile(keys)
+            # Standard ANTAB
+            if gain and gain[0] and gain[0][0][0] == 'GAIN':
+                antenna = find_antenna(gain[0], keyin_keys)
+                gain = dict(gain[0])
+                try:
+                    bfreq = gain['FREQ'][0] * 1e6
+                except:
+                    bfreq = 0
+                    pass
+                try:
+                    efreq = gain['FREQ'][1] * 1e6
+                except:
+                    efreq = 1e12
+                    pass
+                gain_common(gain, antenna, "C", bfreq, efreq, btime, etime,
+                            min_elevation, max_elevation, outfp)
+            # VLBA gains file
+            elif gain and gain[0] and gain[0][0][0] == 'BAND':
+                antenna = gain[0][8][0]
+                gain = dict(gain[0])
+                timerange = gain['TIMERANG']
+                btime = parse_timerange(timerange[0:])
+                etime = parse_timerange(timerange[4:])
+                band = gain['BAND']
+                try:
+                    freq = vlba_freqs[band]
+                    bfreq = freq[0] * 1e9
+                    efreq = freq[1] * 1e9
+                except:
+                    freq = gain['FREQ']
+                    bfreq = freq - freq / 4
+                    efreq = freq + freq / 4
+                    pass
+                gain_common(gain, antenna, band, bfreq, efreq, btime, etime,
+                            min_elevation, max_elevation, outfp)
+            elif gain and gain[0] and gain[0][0][0] == 'TSYS':
+                skip_values(fp)
+                pass
+            keys = StringIO.StringIO()
+            continue
         continue
-    keys.write(line)
-    if line.strip().endswith('/'):
-        keys.seek(0)
-        gain = key.read_keyfile(keys)
-        # Standard ANTAB
-        if gain and gain[0] and gain[0][0][0] == 'GAIN':
-            antenna = find_antenna(gain[0], keyin_keys)
-            gain = dict(gain[0])
-            try:
-                bfreq = gain['FREQ'][0] * 1e6
-            except:
-                bfreq = 0
-                pass
-            try:
-                efreq = gain['FREQ'][1] * 1e6
-            except:
-                efreq = 1e12
-                pass
-            gain_common(gain, antenna, "C", bfreq, efreq, btime, etime, outfp)
-        # VLBA gains file
-        elif gain and gain[0] and gain[0][0][0] == 'BAND':
-            antenna = gain[0][8][0]
-            gain = dict(gain[0])
-            timerange = gain['TIMERANG']
-            btime = parse_timerange(timerange[0:])
-            etime = parse_timerange(timerange[4:])
-            band = gain['BAND']
-            try:
-                freq = vlba_freqs[band]
-                bfreq = freq[0] * 1e9
-                efreq = freq[1] * 1e9
-            except:
-                freq = gain['FREQ']
-                bfreq = freq - freq / 4
-                efreq = freq + freq / 4
-                pass
-            gain_common(gain, antenna, band, bfreq, efreq, btime, etime, outfp)
-        elif gain and gain[0] and gain[0][0][0] == 'TSYS':
-            skip_values(fp)
-            pass
-        keys = StringIO.StringIO()
-        continue
-    continue
 
-outfp.flush()
+    outfp.flush()
 
-tb.fromascii(gc, asciifile=outfp.name, sep=' ',
-             columnnames=columnnames, datatypes=datatypes)
+    tb.fromascii(gc, asciifile=outfp.name, sep=' ',
+                 columnnames=columnnames, datatypes=datatypes)
 
-outfp.close()
-fp.close()
+    outfp.close()
+    fp.close()
+    return
+
+
+if __name__ == "__main__":
+    i = sys.argv.index("-c")
+
+    usage = "usage %prog [options] antabfile gcfile"
+    parser = optparse.OptionParser(usage=usage)
+    parser.add_option("-l", "--min-elevation", type="float", dest="min",
+                      help="minimum elevation", default=0)
+    parser.add_option("-u", "--max-elevation", type="float", dest="max",
+                      help="maximum elevation", default=90)
+    (options, args) = parser.parse_args(sys.argv[i+2:])
+    if len(args) != 2:
+        parser.error("incorrect number of arguments")
+        pass
+
+    convert_gaincurve(args[0], args[1], options.min, options.max)
