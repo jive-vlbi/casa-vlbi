@@ -32,6 +32,9 @@ filename = inspect.getframeinfo(inspect.currentframe()).filename
 sys.path.append(os.path.dirname(os.path.realpath(filename)))
 import key
 
+os.environ['TZ'] = 'UTC'
+tm.tzset()
+
 class IdiHDU(pyfits.PrimaryHDU):
     @classmethod
     def match_header(cls, header):
@@ -46,8 +49,108 @@ class IdiHDU(pyfits.PrimaryHDU):
 
 pyfits.register_hdu(IdiHDU)
 
-os.environ['TZ'] = 'UTC'
-tm.tzset()
+class IdiData:
+    def __init__(self, idifiles):
+        hdulist = pyfits.open(idifiles[0])
+
+        # Fundamentals
+        header = hdulist['ARRAY_GEOMETRY'].header
+        self.obscode = header['OBSCODE']
+        self.n_stokes = header['NO_STKD']
+        self.stk_1 = header['STK_1']
+        self.n_band = header['NO_BAND']
+        self.n_chan = header['NO_CHAN']
+        self.ref_freq = header['REF_FREQ']
+        self.chan_bw = header['CHAN_BW']
+        self.ref_pixl = header['REF_PIXL']
+        self.rdate = header['RDATE']
+
+        # Create antenna mapping
+        tbhdu = hdulist['ARRAY_GEOMETRY']
+        assert tbhdu.header['EXTVER'] == 1
+        antennas = [s.strip() for s in tbhdu.data['ANNAME']]
+        self.antenna_map = dict(zip(antennas, tbhdu.data['NOSTA']))
+
+        # Create list of frequencies
+        tbhdu = hdulist['FREQUENCY']
+        assert tbhdu.data['FREQID'][0] == 1
+        freqs = tbhdu.data['BANDFREQ'][0]
+        self.freqs = np.array(map (lambda x: x + self.ref_freq, freqs))
+        assert len(self.freqs) == self.n_band
+
+        # Create source mapping
+        tbhdu = hdulist['SOURCE']
+        if 'ID_NO.' in tbhdu.columns.names:
+            source_id_col = 'ID_NO.'
+        else:
+            source_id_col = 'SOURCE_ID'
+            pass
+        self.source_map = dict(zip(tbhdu.data['SOURCE'],
+                                   tbhdu.data[source_id_col]))
+
+        # Reference date in convenient form
+        tupletime = tm.strptime(self.rdate, "%Y-%m-%d")
+        self.reftime = tm.mktime(tupletime)
+
+        # Create an index
+        self.idx = []
+        source_id = -1
+        self.last_time = float("-inf")
+        self.first_time = float("inf")
+        for idifile in idifiles:
+            hdulist = pyfits.open(idifile)
+            tbhdu = hdulist['UV_DATA']
+            if 'SOURCE' in tbhdu.columns.names:
+                source_id_col = 'SOURCE'
+            else:
+                source_id_col = 'SOURCE_ID'
+                pass
+            for data in tbhdu.data:
+                jd = data['DATE']
+                time = (jd - 2440587.5 + data['TIME']) * 86400
+                if time > self.last_time:
+                    self.last_time = time
+                    pass
+                if time < self.first_time:
+                    self.first_time = time
+                    pass
+                if data[source_id_col] != source_id:
+                    source_id = data[source_id_col]
+                    self.idx.append((time, source_id))
+                    pass
+                continue
+            continue
+        self.idx.sort()
+        return
+
+    def find_source(self, time):
+        if time < self.first_time or time > self.last_time:
+            return -1
+        source_id = -1
+        i = 0
+        try:
+            while time >= self.idx[i][0]:
+                source_id = self.idx[i][1]
+                i += 1
+                continue
+        except:
+            pass
+        return source_id
+
+
+class TSysTable:
+    def __init__(self):
+        self.time = []
+        self.time_interval = []
+        self.source_id = []
+        self.antenna_no = []
+        self.array = []
+        self.freqid = []
+        self.tsys_1 = []
+        self.tsys_2 = []
+        self.tant = []
+        return
+
 
 def update_map(pols, spws, spwmap, index):
     idx = 0
@@ -79,20 +182,6 @@ def update_map(pols, spws, spwmap, index):
     spws = sorted(spws)
     return
 
-def find_source(time, first_time, last_time):
-    if time < first_time or time > last_time:
-        return -1
-    source_id = -1
-    i = 0
-    try:
-        while time >= idx[i][0]:
-            source_id = idx[i][1]
-            i += 1
-            continue
-    except:
-        pass
-    return source_id
-
 def find_antenna(keys, ignore):
     for key in keys[1:]:
         if not type(key[1]) is bool:
@@ -111,16 +200,15 @@ def skip_values(infp):
         continue
     return
 
-def process_values(infp, keys, pols, ref, antenna_map,
-                   n_band, first_time, last_time):
-    year = tm.gmtime(ref).tm_year
+def process_values(infp, keys, pols, idi, data):
+    year = tm.gmtime(idi.reftime).tm_year
     antenna_name = find_antenna(keys[0], ['SRC/SYS'])
     if not antenna_name:
         print 'Antenna missing from TSYS group'
         skip_values(infp)
         return
     try:
-        antenna = antenna_map[antenna_name]
+        antenna = idi.antenna_map[antenna_name]
     except:
         print 'Antenna %s not present in FITS-IDI file' % antenna_name
         skip_values(infp)
@@ -132,7 +220,7 @@ def process_values(infp, keys, pols, ref, antenna_map,
     if 'INDEX2' in keys:
         update_map(pols, spws, spwmap, keys['INDEX2'])
         pass
-    if len(spws) != n_band:
+    if len(spws) != idi.n_band:
         print >>sys.stderr, \
             'INDEX for antenna %s does not match FITS-IDI file' % antenna_name
         sys.exit(1)
@@ -153,8 +241,8 @@ def process_values(infp, keys, pols, ref, antenna_map,
             t = "%dy%03dd%02dh%02dm%02ds" % \
                 (tm_year, tm_yday, tm_hour, tm_min, tm_sec)
             t = tm.mktime(tm.strptime(t, "%Yy%jd%Hh%Mm%Ss"))
-            days = (t + timeoff - ref) / 86400
-            source = find_source(t, first_time, last_time)
+            days = (t + timeoff - idi.reftime) / 86400
+            source = idi.find_source(t)
             values = fields[2:]
             tsys = {'R': [], 'L': []}
             for spw in spws:
@@ -168,15 +256,15 @@ def process_values(infp, keys, pols, ref, antenna_map,
                     continue
                 continue
             if source != -1:
-                time.append(days)
-                time_interval.append(0.0)
-                source_id.append(source)
-                antenna_no.append(antenna)
-                array.append(1)
-                freqid.append(1)
-                tsys_1.append(tsys['R'])
-                tsys_2.append(tsys['L'])
-                tant.append(n_band * [float('nan')])
+                data.time.append(days)
+                data.time_interval.append(0.0)
+                data.source_id.append(source)
+                data.antenna_no.append(antenna)
+                data.array.append(1)
+                data.freqid.append(1)
+                data.tsys_1.append(tsys['R'])
+                data.tsys_2.append(tsys['L'])
+                data.tant.append(idi.n_band * [float('nan')])
                 pass
             pass
         if line.strip().endswith('/'):
@@ -199,79 +287,8 @@ def append_tsys(antabfile, idifiles):
     except KeyError:
         pass
 
-    # Create an index
-    idx = []
-    source_id = -1
-    last_time = float("-inf")
-    first_time = float("inf")
-    for idifile in idifiles:
-        hdulist = pyfits.open(idifile)
-        tbhdu = hdulist['UV_DATA']
-        if 'SOURCE' in tbhdu.columns.names:
-            source_id_col = 'SOURCE'
-        else:
-            source_id_col = 'SOURCE_ID'
-            pass
-        for data in tbhdu.data:
-            jd = data['DATE']
-            time = (jd - 2440587.5 + data['TIME']) * 86400
-            if time > last_time:
-                last_time = time
-                pass
-            if time < first_time:
-                first_time = time
-                pass
-            if data[source_id_col] != source_id:
-                source_id = data[source_id_col]
-                idx.append((time, source_id))
-                pass
-            continue
-        continue
-    idx.sort()
-
-    hdulist = pyfits.open(idifiles[0], mode='append')
-    header = hdulist['ARRAY_GEOMETRY'].header
-    obscode = header['OBSCODE']
-    n_stokes = header['NO_STKD']
-    stk_1 = header['STK_1']
-    n_band = header['NO_BAND']
-    n_chan = header['NO_CHAN']
-    ref_freq = header['REF_FREQ']
-    chan_bw = header['CHAN_BW']
-    ref_pixl = header['REF_PIXL']
-    rdate = header['RDATE']
-
-    tbhdu = hdulist['ARRAY_GEOMETRY']
-    assert tbhdu.header['EXTVER'] == 1
-    antennas = [s.strip() for s in tbhdu.data['ANNAME']]
-    antenna_map = dict(zip(antennas, tbhdu.data['NOSTA']))
-
-    tbhdu = hdulist['FREQUENCY']
-    assert tbhdu.data['FREQID'][0] == 1
-    freqs = tbhdu.data['BANDFREQ'][0]
-    freqs = np.array(map (lambda x: x + ref_freq, freqs))
-    assert len(freqs) == n_band
-
-    tbhdu = hdulist['SOURCE']
-    if 'ID_NO.' in tbhdu.columns.names:
-        source_id_col = 'ID_NO.'
-    else:
-        source_id_col = 'SOURCE_ID'
-        pass
-    source_map = dict(zip(tbhdu.data['SOURCE'], tbhdu.data[source_id_col]))
-
-    tupletime = tm.strptime(rdate, "%Y-%m-%d")
-    ref = tm.mktime(tupletime)
-
-    time = []
-    time_interval = []
-    source_id = []
-    antenna_no = []
-    array = []
-    freqid = []
-    tsys_1 = []
-    tsys_2 = []
-    tant = []
+    idi = IdiData(idifiles)
+    data = TSysTable()
 
     pols = []
     keys = StringIO.StringIO()
@@ -289,12 +306,21 @@ def append_tsys(antabfile, idifiles):
                 sys.exit(1)
                 pass
             if tsys and tsys[0] and tsys[0][0][0] == 'TSYS':
-                process_values(fp, tsys, pols, ref, antenna_map,
-                               n_band, first_time, last_time)
+                process_values(fp, tsys, pols, idi, data)
                 pass
             keys = StringIO.StringIO()
             continue
         continue
+
+    time = data.time
+    time_interval = data.time_interval
+    source_id = data.source_id
+    antenna_no = data.antenna_no
+    array = data.array
+    freqid = data.freqid
+    tsys_1 = data.tsys_1
+    tsys_2 = data.tsys_2
+    tant = data.tant
 
     if len(pols) == 1 and pols[0] == 'L':
         tsys_1 = tsys_2
@@ -314,7 +340,7 @@ def append_tsys(antabfile, idifiles):
     cols.append(col)
     col = pyfits.Column(name='FREQID', format='1J', array=freqid)
     cols.append(col)
-    format = '%dE' % n_band
+    format = '%dE' % idi.n_band
     col = pyfits.Column(name='TSYS_1', format=format, unit='K', array=tsys_1)
     cols.append(col)
     col = pyfits.Column(name='TANT_1', format=format, unit='K', array=tant)
@@ -336,17 +362,17 @@ def append_tsys(antabfile, idifiles):
         header['EXTNAME'] = 'SYSTEM_TEMPERATURE'
         header['EXTVER'] = 1
         header['TABREV'] = 1
-        header['OBSCODE'] = obscode
-        header['NO_STKD'] = n_stokes
-        header['STK_1'] = stk_1
-        header['NO_BAND'] = n_band
-        header['NO_CHAN'] = n_chan
-        header['REF_FREQ'] = ref_freq
-        header['CHAN_BW'] = chan_bw
-        header['REF_PIXL'] = ref_pixl
+        header['OBSCODE'] = idi.obscode
+        header['NO_STKD'] = idi.n_stokes
+        header['STK_1'] = idi.stk_1
+        header['NO_BAND'] = idi.n_band
+        header['NO_CHAN'] = idi.n_chan
+        header['REF_FREQ'] = idi.ref_freq
+        header['CHAN_BW'] = idi.chan_bw
+        header['REF_PIXL'] = idi.ref_pixl
         # Repeat the reference data even though the FITS-IDI standard
         # doesn't seem to require it.
-        header['RDATE'] = rdate
+        header['RDATE'] = idi.rdate
         header['NO_POL'] = len(pols)
         tbhdu = pyfits.BinTableHDU.from_columns(coldefs, header)
     except:
@@ -355,25 +381,27 @@ def append_tsys(antabfile, idifiles):
         header.update('EXTNAME', 'SYSTEM_TEMPERATURE')
         header.update('EXTVER', 1)
         header.update('TABREV', 1)
-        header.update('OBSCODE', obscode)
-        header.update('NO_STKD', n_stokes)
-        header.update('STK_1', stk_1)
-        header.update('NO_BAND', n_band)
-        header.update('NO_CHAN', n_chan)
-        header.update('REF_FREQ', ref_freq)
-        header.update('CHAN_BW', chan_bw)
-        header.update('REF_PIXL', ref_pixl)
+        header.update('OBSCODE', idi.obscode)
+        header.update('NO_STKD', idi.n_stokes)
+        header.update('STK_1', idi.stk_1)
+        header.update('NO_BAND', idi.n_band)
+        header.update('NO_CHAN', idi.n_chan)
+        header.update('REF_FREQ', idi.ref_freq)
+        header.update('CHAN_BW', idi.chan_bw)
+        header.update('REF_PIXL', idi.ref_pixl)
         # Repeat the reference data even though the FITS-IDI standard doesn't
         # seem to require it.
-        header.update('RDATE', rdate)
+        header.update('RDATE', idi.rdate)
         header.update('NO_POL', len(pols))
         rows = len(tsys_1)
         tbhdu = pyfits.core.new_table(coldefs, header, rows, False,
                                       'BinTableHDU')
         pass
 
+    hdulist = pyfits.open(idifiles[0], mode='append')
     hdulist.append(tbhdu)
     hdulist.close()
+    return
 
 
 if __name__ == "__main__":
