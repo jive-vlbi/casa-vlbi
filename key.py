@@ -18,10 +18,11 @@
 ## (9) Value may be blank ("").
 ## Entries terminated by "/"
 
+from __future__ import print_function
 import math, re, sys, logging
 
 def s_err(scanner, error):
-    raise RuntimeError, "line: %d", scanner.line_no
+    raise RuntimeError("line: %d" % scanner.line_no)
 
 def s_keyword(scanner, token):
     if len(token) > 9 or '.' in token:
@@ -104,7 +105,7 @@ def p_chunk():
     while tok[0] != 'end_chunk':
         entries.append(p_item())
     logging.debug("p_chunk %s", str(tok))
-    tok = tokIt.next()
+    tok = next(tokIt)
     return entries
 
 def p_item():
@@ -112,7 +113,7 @@ def p_item():
     lhs = p_key()
     if tok==('equal',):
         logging.debug("p_item %s", str(tok))
-        tok = tokIt.next()
+        tok = next(tokIt)
         rhs = p_rhs()
     elif tok[0] in ['value', 'quote', 'number']:
         rhs = p_rhs()
@@ -125,9 +126,9 @@ def p_key():
     logging.debug("p_key: %s", str(tok))
     if tok[0] == 'key':
         res = tok
-        tok = tokIt.next()
+        tok = next(tokIt)
     else:
-        raise RuntimeError, "Expected key token, got %s" % str(tok)
+        raise RuntimeError("Expected key token, got %s" % str(tok))
     return res[1]
 
 def p_rhs():
@@ -136,7 +137,7 @@ def p_rhs():
     rhs = [val]
     while tok == ('comma',):
         logging.debug("p_rhs: %s", str(tok))
-        tok = tokIt.next()
+        tok = next(tokIt)
         rhs.append(p_value()) # p_value advances tok beyond the value.
     if len(rhs)==1:
         rhs = rhs[0]
@@ -145,10 +146,10 @@ def p_rhs():
 def p_value():
     global tok
     if tok[0] not in ['value', 'quote', 'number', 'key']:
-        raise RuntimeError, "Unexpected RHS token %s" % str(tok)
+        raise RuntimeError("Unexpected RHS token %s" % str(tok))
     val = tok
     logging.debug("p_value: %s", str(val))
-    tok = tokIt.next()
+    tok = next(tokIt)
     return val[1]
 
 def print_tree(res):
@@ -166,7 +167,7 @@ def print_tree(res):
     logging.debug("All: %s", all_chunks_text)
     contents = ",\n".join(all_chunks_text)
     logging.debug("Contents: %s", contents)
-    print "[\n%s\n]\n" % contents
+    print("[\n%s\n]\n" % contents)
 
 scanner.line_no = 0
 
@@ -176,15 +177,15 @@ def read_keyfile(f):
     try:
         res = scanner.scan(f.read())
         if res[1]!='':
-            raise RuntimeError, "Unparsed text: %s." % (res[1][:20])
+            raise RuntimeError("Unparsed text: %s." % (res[1][:20]))
         tokIt = iter(res[0]+['EOF'])
         try: 
-            tok = tokIt.next()
+            tok = next(tokIt)
             res = p_all()
         except StopIteration: # empty file
             res = ''
-    except RuntimeError, txt:
-        print >>sys.stderr, "line %d:  %s" % (scanner.line_no, txt)
+    except RuntimeError as txt:
+        print("line %d:  %s" % (scanner.line_no, txt), file=sys.stderr)
         raise RuntimeError
     return res
 
