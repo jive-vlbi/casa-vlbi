@@ -17,16 +17,27 @@
 # along with this library; if not, write to the Free Software Foundation,
 # Inc., 675 Massachusetts Ave, Cambridge, MA 02139, USA.
 #
+from __future__ import print_function
 import inspect
 import math
 import os
 import optparse
-import StringIO
 import sys
 import time as tm
 
-import pyfits
+try:
+    # Python 2
+    from StringIO import StringIO
+except:
+    # Python 3
+    from io import StringIO
+
 import numpy as np
+
+try:
+    import astropy.io.fits as pyfits
+except:
+    import pyfits
 
 filename = inspect.getframeinfo(inspect.currentframe()).filename
 sys.path.append(os.path.dirname(os.path.realpath(filename)))
@@ -75,7 +86,7 @@ class IdiData:
         tbhdu = hdulist['FREQUENCY']
         assert tbhdu.data['FREQID'][0] == 1
         freqs = tbhdu.data['BANDFREQ'][0]
-        self.freqs = np.array(map (lambda x: x + self.ref_freq, freqs))
+        self.freqs = np.array([x + self.ref_freq for x in freqs])
         assert len(self.freqs) == self.n_band
 
         # Create source mapping
@@ -204,13 +215,13 @@ def process_values(infp, keys, pols, idi, data):
     year = tm.gmtime(idi.reftime).tm_year
     antenna_name = find_antenna(keys[0], ['SRC/SYS'])
     if not antenna_name:
-        print 'Antenna missing from TSYS group'
+        print('Antenna missing from TSYS group')
         skip_values(infp)
         return
     try:
         antenna = idi.antenna_map[antenna_name]
     except:
-        print 'Antenna %s not present in FITS-IDI file' % antenna_name
+        print('Antenna %s not present in FITS-IDI file' % antenna_name)
         skip_values(infp)
         return
     keys = dict(keys[0])
@@ -221,8 +232,8 @@ def process_values(infp, keys, pols, idi, data):
         update_map(pols, spws, spwmap, keys['INDEX2'])
         pass
     if len(spws) != idi.n_band:
-        print >>sys.stderr, \
-            'INDEX for antenna %s does not match FITS-IDI file' % antenna_name
+        print('INDEX for antenna %s does not match FITS-IDI file'
+              % antenna_name, file=sys.stderr)
         sys.exit(1)
     timeoff = 0
     if 'TIMEOFF' in keys:
@@ -282,7 +293,7 @@ def append_tsys(antabfile, idifiles):
     try:
         hdulist = pyfits.open(idifiles[0])
         hdu = hdulist['SYSTEM_TEMPERATURE']
-        print 'SYSTEM_TEMPERATURE table already present in FITS-IDI file'
+        print('SYSTEM_TEMPERATURE table already present in FITS-IDI file')
         sys.exit(1)
     except KeyError:
         pass
@@ -291,7 +302,7 @@ def append_tsys(antabfile, idifiles):
     data = TSysTable()
 
     pols = []
-    keys = StringIO.StringIO()
+    keys = StringIO()
     fp = open(antabfile, 'r')
     for line in fp:
         if line.startswith('!'):
@@ -302,13 +313,13 @@ def append_tsys(antabfile, idifiles):
             try:
                 tsys = key.read_keyfile(keys)
             except RuntimeError:
-                print >>sys.stderr, "\n", keys.getvalue()
+                print("\n", keys.getvalue(), file=sys.stderr)
                 sys.exit(1)
                 pass
             if tsys and tsys[0] and tsys[0][0][0] == 'TSYS':
                 process_values(fp, tsys, pols, idi, data)
                 pass
-            keys = StringIO.StringIO()
+            keys = StringIO()
             continue
         continue
 
