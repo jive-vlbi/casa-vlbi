@@ -15,17 +15,30 @@
 # along with this library; if not, write to the Free Software Foundation,
 # Inc., 675 Massachusetts Ave, Cambridge, MA 02139, USA.
 #
+from __future__ import print_function
 import inspect
 import math
 import os
 import optparse
-import StringIO
 import sys
 import tempfile
 import time
 
+try:
+    # Python 2
+    from StringIO import StringIO
+except:
+    # Python 3
+    from io import StringIO
+
 import numpy as np
-from casac import casac
+
+try:
+    # CASA 5
+    from casac import casac as casatools
+except:
+    # CASA 6
+    import casatools
 
 filename = inspect.getframeinfo(inspect.currentframe()).filename
 sys.path.append(os.path.dirname(os.path.realpath(filename)))
@@ -106,9 +119,9 @@ def find_antenna(keys, ignore):
 
 def gain_common(gain, antenna, band, bfreq, efreq, btime, etime,
                 min_elevation, max_elevation, outfp):
-    print >> outfp, band, bfreq, efreq,
-    print >> outfp, btime, etime,
-    print >> outfp, antenna,
+    print(band, bfreq, efreq, end=' ', file=outfp)
+    print(btime, etime, end=' ', file=outfp)
+    print(antenna, end=' ', file=outfp)
     dpfu = {}
     try:
         dpfu['R'] = gain['DPFU'][0]
@@ -123,20 +136,20 @@ def gain_common(gain, antenna, band, bfreq, efreq, btime, etime,
         pass
     poly = transform_poly(gain['POLY'], min_elevation, max_elevation)
     for pol in ['R', 'L']:
-        for i in xrange(4):
+        for i in range(4):
             try:
                 value = poly[i] * math.sqrt(dpfu[pol])
             except:
                 value = 0.0
                 pass
-            print >> outfp, value,
+            print(value, end=' ', file=outfp)
             continue
         continue
-    print >> outfp
+    print(file=outfp)
     return
 
 def convert_gaincurve(antab, gc, min_elevation=0.0, max_elevation=90.0):
-    tb = casac.table()
+    tb = casatools.table()
 
     outfp = tempfile.NamedTemporaryFile('w')
 
@@ -145,7 +158,7 @@ def convert_gaincurve(antab, gc, min_elevation=0.0, max_elevation=90.0):
     t = time.strptime("2100y01d00h00m00s", "%Yy%jd%Hh%Mm%Ss")
     etime = time.mktime(t) + 40587.0 * 86400
 
-    keys = StringIO.StringIO()
+    keys = StringIO()
     fp = open(antab, 'r')
     for line in fp:
         if line.startswith('!'):
@@ -192,7 +205,7 @@ def convert_gaincurve(antab, gc, min_elevation=0.0, max_elevation=90.0):
             elif gain and gain[0] and gain[0][0][0] == 'TSYS':
                 skip_values(fp)
                 pass
-            keys = StringIO.StringIO()
+            keys = StringIO()
             continue
         continue
 
@@ -207,7 +220,12 @@ def convert_gaincurve(antab, gc, min_elevation=0.0, max_elevation=90.0):
 
 
 if __name__ == "__main__":
-    i = sys.argv.index("-c")
+    # Allow this scrupt to be invoked using casa -c
+    try:
+        i = sys.argv.index("-c") + 2
+    except:
+        i = 1
+        pass
 
     usage = "usage %prog [options] antabfile gcfile"
     parser = optparse.OptionParser(usage=usage)
@@ -215,7 +233,7 @@ if __name__ == "__main__":
                       help="minimum elevation", default=0)
     parser.add_option("-u", "--max-elevation", type="float", dest="max",
                       help="maximum elevation", default=90)
-    (options, args) = parser.parse_args(sys.argv[i+2:])
+    (options, args) = parser.parse_args(sys.argv[i:])
     if len(args) != 2:
         parser.error("incorrect number of arguments")
         pass
