@@ -14,7 +14,7 @@ file named by `idifiles`.  If an observation is split into multiple
 FITS-IDI files, `idifile` should be a list of file names.
 
 ```python
-gc.create_gaincurve(antabfile, gc, min_elevation=0.0, max_elevation=90.0)
+gc.convert_gaincurve(antabfile, gc, min_elevation=0.0, max_elevation=90.0)
 ```
 
 Create a gaincurve table with name `gc` from gain curves from the file
