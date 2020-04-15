@@ -23,7 +23,10 @@ import optparse
 import os
 import sys
 
-import pyfits
+try:
+    import astropy.io.fits as pyfits
+except:
+    import pyfits
 
 filename = inspect.getframeinfo(inspect.currentframe()).filename
 sys.path.append(os.path.dirname(os.path.realpath(filename)))
