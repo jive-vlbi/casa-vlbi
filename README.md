@@ -1,11 +1,12 @@
 # casa-vlbi
 Scripts to assist VLBI data reduction in CASA
 
-The append_tsys.py, gc.py and flag.py scripts can be used as Python
-modules and offer the following interfaces:
+The functionality of the append_tsys.py, gc.py and flag.py scripts is
+also available in Python modules.  The following interfaces are
+available:
 
 ```python
-append_tsys.append_tsys(andtabfile, idifiles)
+casvlbitools.fitsidi.append_tsys(andtabfile, idifiles)
 ```
 
 Append Tsys measurements from the file named by `antabfile` (which
@@ -14,7 +15,7 @@ file named by `idifiles`.  If an observation is split into multiple
 FITS-IDI files, `idifile` should be a list of file names.
 
 ```python
-gc.convert_gaincurve(antabfile, gc, min_elevation=0.0, max_elevation=90.0)
+casavlbitools.casa.convert_gaincurve(antabfile, gc, min_elevation=0.0, max_elevation=90.0)
 ```
 
 Create a gaincurve table with name `gc` from gain curves from the file
@@ -24,7 +25,7 @@ and `max_elevation`, which should be specified in degrees, and then
 refitted.
 
 ```python
-flag.convert_flags(infile, idifiles, outfp=sys.stdout, outfile=None)
+casavlbitools.fitsidi.convert_flags(infile, idifiles, outfp=sys.stdout, outfile=None)
 ```
 
 Convert the flag file named by `infile` (which should be in AIPS UVFLG
