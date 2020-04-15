@@ -30,7 +30,7 @@ from casac import casac
 
 filename = inspect.getframeinfo(inspect.currentframe()).filename
 sys.path.append(os.path.dirname(os.path.realpath(filename)))
-import key
+from casavlbitools import key
 
 os.environ['TZ'] = 'UTC'
 time.tzset()

@@ -30,7 +30,7 @@ except:
 
 filename = inspect.getframeinfo(inspect.currentframe()).filename
 sys.path.append(os.path.dirname(os.path.realpath(filename)))
-import key
+from casavlbitools import key
 
 def find_first_dobs(idifiles):
     first_dobs = datetime.datetime(datetime.MAXYEAR, 12, 31)
