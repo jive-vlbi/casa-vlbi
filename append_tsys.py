@@ -28,7 +28,7 @@ sys.path.append(os.path.dirname(os.path.realpath(filename)))
 from casavlbitools.fitsidi import append_tsys
 
 if __name__ == "__main__":
-    # Allow this scrupt to be invoked using casa -c
+    # Allow this script to be invoked using casa -c
     try:
         i = sys.argv.index("-c") + 2
     except:
