@@ -15,6 +15,14 @@ file named by `idifiles`.  If an observation is split into multiple
 FITS-IDI files, `idifile` should be a list of file names.
 
 ```python
+casvlbitools.fitsidi.append_gc(andtabfile, idifile)
+```
+
+Append gain curves and sensitivity information from the file named by
+`antabfile` (which should be in AIPS ANTAB format) to the FITS-IDI
+file named by `idifile`.
+
+```python
 casavlbitools.casa.convert_gaincurve(antabfile, gc, min_elevation=0.0, max_elevation=90.0)
 ```
 
