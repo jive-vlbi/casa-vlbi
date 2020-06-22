@@ -52,10 +52,17 @@ datatypes = [
     "R4,2"
 ]
 
-def transform_poly(coeff, min_elev=0, max_elev=90):
+def transform_elev_poly(coeff, min_elev=0, max_elev=90):
     f = np.poly1d(coeff[::-1])
     g = lambda x: np.sqrt(f(90 - x))
     x = np.linspace(min_elev, max_elev, 64, endpoint=True)
+    y = g(x)
+    return np.poly1d(np.polyfit(x, y, 3))
+
+def transform_altaz_poly(coeff, min_za=0, max_za=90):
+    f = np.poly1d(coeff[::-1])
+    g = lambda x: np.sqrt(f(x))
+    x = np.linspace(min_za, max_za, 64, endpoint=True)
     y = g(x)
     return np.poly1d(np.polyfit(x, y, 3))
 
@@ -110,20 +117,25 @@ dpfu = {}
 for data in tbhdu.data:
     antenna_no = data['ANTENNA_NO']
     type_1 = data['TYPE_1']
+    y_typ_1 = data['Y_TYP_1']
     gain_1 = data['GAIN_1']
     sens_1 = data['SENS_1']
     if n_pol > 1:
         type_2 = data['TYPE_2']
+        y_typ_2 = data['Y_TYP_2']
         gain_2 = data['GAIN_2']
         sens_2 = data['SENS_2']
     else:
         type_2 = type_1
+        y_typ_2 = y_typ_1
         gain_2 = gain_1
         sens_2 = sens_1
         pass
     if n_band == 1:
         type_1 = [type_1]
         type_2 = [type_2]
+        y_typ_1 = [y_typ_1]
+        y_typ_2 = [y_typ_2]
         sens_1 = [sens_1]
         sens_2 = [sens_2]
         pass
@@ -137,9 +149,21 @@ for data in tbhdu.data:
         print 'Unsupported gain curve type %' % type_2[0]
         sys.exit(1)
         pass
+    if y_typ_1[0] != 1 and y_typ_1[0] != 2:
+        print 'Unsupported gain curve coordinate type %' % y_typ_1[0]
+        sys.exit(1)
+        pass
+    if y_typ_2[0] != 1 and y_typ_2[0] != 2:
+        print 'Unsupported gain curve coordinate type %' % y_typ_2[0]
+        sys.exit(1)
+        pass
     for index in range(n_band):
         if type_1[index] != type_1[0] or type_2[index] != type_1[0]:
             print 'Mismatched gain curve types'
+            sys.exit(1)
+            pass
+        if y_typ_1[index] != y_typ_1[0] or y_typ_2[index] != y_typ_1[0]:
+            print 'Mismatched gain curve coordinate types'
             sys.exit(1)
             pass
         if sens_1[index] != sens_1[0] or sens_2[index] != sens_2[0]:
@@ -159,8 +183,15 @@ for data in tbhdu.data:
     dpfu['L'] = sens_2[0]
 
     poly = {}
-    poly['R'] = transform_poly(gain_1[0], options.min, options.max)
-    poly['L'] = transform_poly(gain_2[0], options.min, options.max)
+    if y_typ_1[0] == 1:
+        poly['R'] = transform_elev_poly(gain_1[0], options.min, options.max)
+        poly['L'] = transform_elev_poly(gain_2[0], options.min, options.max)
+    else:
+        max_za = 90 - options.min
+        min_za = 90 - options.max
+        poly['R'] = transform_altaz_poly(gain_1[0], min_za, max_za)
+        poly['L'] = transform_altaz_poly(gain_2[0], min_za, max_za)
+        pass
 
     print >> outfp, "C", 0, 1e12,
     print >> outfp, btime, etime,
