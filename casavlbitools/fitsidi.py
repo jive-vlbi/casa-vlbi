@@ -81,6 +81,9 @@ class IdiData:
         tbhdu = hdulist['FREQUENCY']
         assert tbhdu.data['FREQID'][0] == 1
         freqs = tbhdu.data['BANDFREQ'][0]
+        if self.n_band == 1:
+            freqs = [freqs]
+            pass
         self.freqs = np.array([x + self.ref_freq for x in freqs])
         assert len(self.freqs) == self.n_band
 
