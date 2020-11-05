@@ -213,8 +213,6 @@ def process_values(infp, keys, pols, vis):
     return
 
 def write_values(outfp):
-    pols = ['R', 'L']
-
     keys = tsys_values.keys()
     for idx in sorted(keys):
         antenna = idx[0]
@@ -244,7 +242,7 @@ def write_values(outfp):
             # TIME
             print >> outfp, secs,
             # NUM_RECEPTORS
-            print >> outfp, 2,
+            print >> outfp, len(pols),
             # TSYS
             for pol in pols:
                 print >> outfp, scipy.interp(secs, x[pol], y[pol]),
@@ -257,6 +255,9 @@ def write_values(outfp):
 
 ms.open(vis)
 scans = ms.getscansummary()
+metadata = ms.metadata()
+corrtypes = metadata.corrtypesforpol(0)
+metadata.close()
 ms.close()
 
 scan_times = []
@@ -270,6 +271,14 @@ scan_times = sorted(scan_times)
 outfp = tempfile.NamedTemporaryFile('w')
 
 pols = []
+if 5 in corrtypes:
+    pols.append('R')
+    pass
+if 8 in corrtypes:
+    pols.append('L')
+    pass
+datatypes[7] = "R%d" % len(pols)
+
 keys = StringIO.StringIO()
 fp = open(antab, 'r')
 for line in fp:
