@@ -283,7 +283,7 @@ for line in fp:
         except RuntimeError:
             print >>sys.stderr, "\n", keys.getvalue()
             sys.exit(1)
-        if tsys[0][0][0] == 'TSYS':
+        if tsys and tsys[0] and tsys[0][0][0] == 'TSYS':
             process_values(fp, tsys, pols, vis)
             pass
         keys = StringIO.StringIO()
