@@ -327,7 +327,7 @@ if not exist and options.append:
     print >>sys.stderr, "SYSCAL table does not exist"
     sys.exit(1)
 
-sycal = vis + '/SYSCAL'
+syscal = vis + '/SYSCAL'
 if options.append:
     syscal = vis + '/_SYSCAL'
     pass
@@ -353,7 +353,8 @@ if options.append:
     startrow = tb.nrows()
     tb.addrows(nrows)
     for col in columnnames:
-        tb.putcol(col, cols[col], startrow=startrow)
+        if col in tb.colnames():
+            tb.putcol(col, cols[col], startrow=startrow)
         continue
     tb.close()
 else:
