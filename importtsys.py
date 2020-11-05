@@ -39,6 +39,10 @@ i = sys.argv.index("-c")
 
 usage = "usage %prog [options] antabfile measurementset"
 parser = optparse.OptionParser(usage=usage)
+parser.add_option("-a", "--append", action="store_true", dest="append",
+                  help="append to existing table", default=False)
+parser.add_option("-r", "--replace", action="store_true", dest="replace",
+                  help="replace existing table", default=False)
 (options, args) = parser.parse_args(sys.argv[i+2:])
 if len(args) != 2:
     parser.error("incorrect number of arguments")
@@ -308,17 +312,57 @@ unit = tb.getcolkeyword("TIME", "QuantumUnits")
 meas = tb.getcolkeyword("TIME", "MEASINFO")
 tb.close()
 
-tb.fromascii(tablename=vis + '/SYSCAL', asciifile=outfp.name, sep=' ',
+exist = False
+try:
+    tb.open(vis + '/SYSCAL')
+    tb.close()
+    exist = True
+except:
+    pass
+
+if exist and not options.append and not options.replace:
+    print >>sys.stderr, "SYSCAL table already exists"
+    sys.exit(1)
+if not exist and options.append:
+    print >>sys.stderr, "SYSCAL table does not exist"
+    sys.exit(1)
+
+sycal = vis + '/SYSCAL'
+if options.append:
+    syscal = vis + '/_SYSCAL'
+    pass
+
+tb.fromascii(tablename=syscal, asciifile=outfp.name, sep=' ',
              columnnames=columnnames, datatypes=datatypes)
-tb.open(vis + '/SYSCAL', nomodify=False)
+tb.open(syscal, nomodify=False)
 tb.putcolkeyword("INTERVAL", "QuantumUnits", unit)
 tb.putcolkeyword("TIME", "QuantumUnits", unit)
 tb.putcolkeyword("TIME", "MEASINFO", meas)
 tb.putcolkeyword("TSYS", "QuantumUnits", "K")
 tb.close()
 
-tb.open(vis, nomodify=False)
-tb.putkeyword('SYSCAL', 'Table: ' + vis + '/SYSCAL')
+if options.append:
+    tb.open(syscal)
+    nrows = tb.nrows()
+    cols = {}
+    for col in columnnames:
+        cols[col] = tb.getcol(col)
+        continue
+    tb.close()
+    tb.open(vis + '/SYSCAL', nomodify=False)
+    startrow = tb.nrows()
+    tb.addrows(nrows)
+    for col in columnnames:
+        tb.putcol(col, cols[col], startrow=startrow)
+        continue
+    tb.close()
+else:
+    tb.open(vis, nomodify=False)
+    tb.putkeyword('SYSCAL', 'Table: ' + vis + '/SYSCAL')
+    tb.close()
+    pass
+
+tb.open(vis + '/SYSCAL')
 tb.close()
 
 outfp.close()
