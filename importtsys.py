@@ -19,6 +19,7 @@ import inspect
 import math
 import os
 import optparse
+import shutil
 import StringIO
 import sys
 import tempfile
@@ -357,6 +358,7 @@ if options.append:
             tb.putcol(col, cols[col], startrow=startrow)
         continue
     tb.close()
+    shutil.rmtree(vis + '/_SYSCAL')
 else:
     tb.open(vis, nomodify=False)
     tb.putkeyword('SYSCAL', 'Table: ' + vis + '/SYSCAL')
