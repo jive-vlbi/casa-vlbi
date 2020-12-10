@@ -244,7 +244,8 @@ def process_values(infp, keys, pols, idi, data):
     if len(spws) != idi.n_band:
         print('INDEX for antenna %s does not match FITS-IDI file'
               % antenna_name, file=sys.stderr)
-        sys.exit(1)
+        pass
+    spws = range(idi.n_band)
     timeoff = 0
     if 'TIMEOFF' in keys:
         timeoff = float(keys['TIMEOFF'])
