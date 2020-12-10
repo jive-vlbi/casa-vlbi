@@ -271,6 +271,9 @@ def process_values(infp, keys, pols, idi, data):
                 for pol in ['R', 'L']:
                     try:
                         value = float(values[spwmap[(pol, spw)]])
+                        if value == 999.9:
+                            value = float(-999.9)
+                            pass
                     except:
                         value = float(-999.9)
                         pass
