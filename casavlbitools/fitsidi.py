@@ -271,7 +271,7 @@ def process_values(infp, keys, pols, idi, data):
                     try:
                         value = float(values[spwmap[(pol, spw)]])
                     except:
-                        value = float("nan")
+                        value = float(-999.9)
                         pass
                     tsys[pol].append(value)
                     continue
@@ -285,7 +285,7 @@ def process_values(infp, keys, pols, idi, data):
                 data.freqid.append(1)
                 data.tsys_1.append(tsys['R'])
                 data.tsys_2.append(tsys['L'])
-                data.tant.append(idi.n_band * [float('nan')])
+                data.tant.append(idi.n_band * [float(-999.9)])
                 pass
             pass
         if line.strip().endswith('/'):
