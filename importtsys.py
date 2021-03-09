@@ -24,6 +24,7 @@ import StringIO
 import sys
 import tempfile
 import time
+import re
 
 import numpy as np
 import scipy
@@ -137,6 +138,37 @@ def skip_values(infp):
             break
         continue
     return
+  
+def get_timetuple(ts):
+    # ts as list of 2 strings. Can have formats
+    # [Day_no  hh.hh      ]
+    # [Day_no  hh:mm.mm   ]
+    # [Day_no  hh:mm:ss.ss]
+    tm_yday = int(ts[0])
+    # NOTE: Regexs below will match any number of decimals on the last quantity (e.g. 19.8222222 and 19.8 both work)
+    if re.match(r"[0-9]{2}\.[0-9]+", ts[1]):
+        # hh.hh 
+        tm_hour = int(ts[1].split('.')[0])
+        tm_min = math.modf(60*float(ts[1].split('.')[1]))
+        tm_sec = int(60 * tm_min[0])
+        tm_min = int(tm_min[1])
+    elif re.match(r"[0-9]{2}:[0-9]{2}\.[0-9]+", ts[1]):
+        # hh:mm.mm 
+        tm_hour = int(ts[1].split(':')[0])
+        tm_min = math.modf(float(ts[1].split(':')[1]))
+        tm_sec = int(60 * tm_min[0])
+        tm_min = int(tm_min[1])
+    elif re.match(r"[0-9]{2}:[0-9]{2}:[0-9]+", ts[1]):
+        # hh:mm:ss
+        tm_hour = int(ts[1].split(':')[0])
+        tm_min = int(ts[1].split(':')[1])
+        tm_sec = int(ts[1].split(':')[2])
+    elif re.match(r"[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]+", ts[1]):
+        # hh:mm:ss.ss
+        tm_hour = int(ts[1].split(':')[0])
+        tm_min = int(ts[1].split(':')[1])
+        tm_sec = float(ts[1].split(':')[2]))
+    return tm_yday, tm_hour, tm_min, tm_sec
 
 def process_values(infp, keys, pols, vis):
     tb.open(vis)
@@ -174,11 +206,7 @@ def process_values(infp, keys, pols, vis):
         fields = line.split()
         if len(fields) > 1:
             tm_year = year
-            tm_yday = int(fields[0])
-            tm_hour = int(fields[1].split(':')[0])
-            tm_min = math.modf(float(fields[1].split(':')[1]))
-            tm_sec = int(60 * tm_min[0])
-            tm_min = int(tm_min[1])
+            tm_yday, tm_hour, tm_min, tm_sec = get_timetuple(fields)
             t = "%dy%03dd%02dh%02dm%02ds" % \
                 (tm_year, tm_yday, tm_hour, tm_min, tm_sec)
             t = time.strptime(t, "%Yy%jd%Hh%Mm%Ss")
