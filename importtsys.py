@@ -231,7 +231,7 @@ def process_values(infp, keys, pols, vis):
                             pass
                         try:
                             value = float(values[spwmap[(pol, spw)]])
-                            if value > 0:
+                            if value > 0 and value != 999.9:
                                 tsys_values[idx][pol].append(value)
                                 tsys_times[idx][pol].append(secs)
                                 pass
