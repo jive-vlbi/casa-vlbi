@@ -15,20 +15,33 @@
 # along with this library; if not, write to the Free Software Foundation,
 # Inc., 675 Massachusetts Ave, Cambridge, MA 02139, USA.
 #
+from __future__ import print_function
 import inspect
 import math
 import os
 import optparse
 import shutil
-import StringIO
 import sys
 import tempfile
 import time
 import re
 
+try:
+    # Python 2
+    from StringIO import StringIO
+except:
+    # Python 3
+    from io import StringIO
+
 import numpy as np
 import scipy
-from casac import casac
+
+try:
+    # CASA 5
+    from casac import casac as casatools
+except:
+    # CASA 6
+    import casatools
 
 filename = inspect.getframeinfo(inspect.currentframe()).filename
 sys.path.append(os.path.dirname(os.path.realpath(filename)))
@@ -37,7 +50,12 @@ from casavlbitools import key
 os.environ['TZ'] = 'UTC'
 time.tzset()
 
-i = sys.argv.index("-c")
+# Allow this script to be invoked using casa -c
+try:
+    i = sys.argv.index("-c") + 2
+except:
+    i = 1
+    pass
 
 usage = "usage %prog [options] antabfile measurementset"
 parser = optparse.OptionParser(usage=usage)
@@ -45,14 +63,15 @@ parser.add_option("-a", "--append", action="store_true", dest="append",
                   help="append to existing table", default=False)
 parser.add_option("-r", "--replace", action="store_true", dest="replace",
                   help="replace existing table", default=False)
-(options, args) = parser.parse_args(sys.argv[i+2:])
+(options, args) = parser.parse_args(sys.argv[i:])
 if len(args) != 2:
     parser.error("incorrect number of arguments")
 
 antab = args[0]
 vis = args[1]
 
-tb = casac.table()
+tb = casatools.table()
+ms = casatools.ms()
 
 columnnames = [
     "ANTENNA_ID",
@@ -179,13 +198,13 @@ def process_values(infp, keys, pols, vis):
     tb.close()
     antenna_name = find_antenna(keys[0], ['SRC/SYS'])
     if not antenna_name:
-        print 'Antenna missing from TSYS group'
+        print('Antenna missing from TSYS group')
         skip_values(infp)
         return
     try:
         antenna = namelist.index(antenna_name)
     except:
-        print 'Antenna %s not present in MeasurementSet' % antenna_name
+        print('Antenna %s not present in MeasurementSet' % antenna_name)
         skip_values(infp)
         return
     keys = dict(keys[0])
@@ -247,7 +266,7 @@ def process_values(infp, keys, pols, vis):
     return
 
 def write_values(outfp):
-    keys = tsys_values.keys()
+    keys = list(tsys_values.keys())
     for idx in sorted(keys):
         antenna = idx[0]
         scan = idx[1]
@@ -264,24 +283,24 @@ def write_values(outfp):
         secs = scan_times[scan][0]
         while secs <= scan_times[scan][1]:
             # ANTENNA_ID
-            print >> outfp, antenna,
+            print(antenna, end=' ', file=outfp)
             # ARRAY_ID
-            print >> outfp, 0,
+            print(0, end=' ', file=outfp)
             # FEED_ID
-            print >> outfp, 0,
+            print(0, end=' ', file=outfp)
             # INTERVAL
-            print >> outfp, 0,
+            print(0, end=' ', file=outfp)
             # SPECTRAL_WINDOW_ID
-            print >> outfp, spw,
+            print(spw, end=' ', file=outfp)
             # TIME
-            print >> outfp, secs,
+            print(secs, end=' ', file=outfp)
             # NUM_RECEPTORS
-            print >> outfp, len(pols),
+            print(len(pols), end=' ', file=outfp)
             # TSYS
             for pol in pols:
-                print >> outfp, scipy.interp(secs, x[pol], y[pol]),
+                print(scipy.interp(secs, x[pol], y[pol]), end=' ', file=outfp)
                 continue
-            print >> outfp
+            print(file=outfp)
             secs += 30
             continue
         continue
@@ -313,7 +332,7 @@ if 8 in corrtypes:
     pass
 datatypes[7] = "R%d" % len(pols)
 
-keys = StringIO.StringIO()
+keys = StringIO()
 fp = open(antab, 'r')
 for line in fp:
     if line.startswith('!'):
@@ -324,12 +343,12 @@ for line in fp:
         try:
             tsys = key.read_keyfile(keys)
         except RuntimeError:
-            print >>sys.stderr, "\n", keys.getvalue()
+            print("\n", keys.getvalue(), file=sys.stderr)
             sys.exit(1)
         if tsys and tsys[0] and tsys[0][0][0] == 'TSYS':
             process_values(fp, tsys, pols, vis)
             pass
-        keys = StringIO.StringIO()
+        keys = StringIO()
         continue
     continue
 
@@ -351,10 +370,10 @@ except:
     pass
 
 if exist and not options.append and not options.replace:
-    print >>sys.stderr, "SYSCAL table already exists"
+    print("SYSCAL table already exists", file=sys.stderr)
     sys.exit(1)
 if not exist and options.append:
-    print >>sys.stderr, "SYSCAL table does not exist"
+    print("SYSCAL table does not exist", file=sys.stderr)
     sys.exit(1)
 
 syscal = vis + '/SYSCAL'
