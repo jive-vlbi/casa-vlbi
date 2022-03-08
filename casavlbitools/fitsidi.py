@@ -708,6 +708,8 @@ def convert_flags(infile, idifiles, outfp=sys.stdout, outfile=None):
         timerange = flag['TIMERANG']
         if timerange == [0.0, 0.0, 0.0, 0.0, 400.0, 0.0, 0.0, 0.0]:
             timerange = ""
+        elif isinstance(timerange, float) or isinstance(timerange, int):
+            timerange = ""
         else:
             year = datetime.datetime(first_date.year, 1, 1)
             date1 = year + datetime.timedelta(timerange[0] - 1)
