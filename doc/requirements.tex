@@ -78,8 +78,6 @@ general calibration infrastructure in CASA.
   to be very flat at low elevations so this isn't important in that
   case.  However for aperture arrays the effect may be considerable.
 
-\item It shall be possible to select data by labeled intent.
-
 \item It shall be possibe to add intents to an existing Measurement Set.
   
 \end{enumerate}
@@ -116,6 +114,8 @@ VLBI.
 \begin{enumerate}[subseclist]
 
 \item It shall be possible to specify a zenith opacity.
+
+  Note: This may already be possible in \texttt{gencal}.
 
 \item It shall be possible to use system temperature measurements made
   over a specified period as input to solve for zenith opacity.
@@ -388,17 +388,18 @@ Note: This has been partly prototyped in Python by Des Small.
 
 \end{enumerate}
 
+\item It shall be possible to plot fringefit solutions using the
+  \texttt{plotms} task.
+
 \end{enumerate}
 
 
 \subsection{Modes of operation}
 
+Additonal modes of operation shall be implemented for the
+\texttt{fringefit} task.
+
 \begin{enumerate}[subseclist]
-
-\item Additonal modes of operation shall be implemented for the
-  \texttt{fringefit} task.
-
-\begin{enumerate}[subsecsublist]
 
 \item It shall be possible to overlap time ranges by a specified
   amount (see the SOLSUB parameter for AIPS task \texttt{FRING}).
@@ -410,8 +411,6 @@ Note: This has been partly prototyped in Python by Des Small.
 \item It shall be possible for delay and rate windows, both center and
   width, to be specified by the user on a per-antenna basis.
 
-\end{enumerate}
-
 \item It should be possible to smooth calibration solutions obtained
   using the CASA \texttt{fringefit} task.
 
@@ -422,8 +421,8 @@ Note: This has been partly prototyped in Python by Des Small.
 
 \end{enumerate}
 
-\item It should be possible to combine data by IF polarization prior
-  to determination of the delay paramters.
+\item It should be possible to combine data by correlation products
+  prior to determination of the delay paramters.
 
   Question: Should this combine just the parallel hands?  Stacking
   cross-hands could be helpful when working on data with poor
