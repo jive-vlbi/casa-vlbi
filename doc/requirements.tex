@@ -1,0 +1,964 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{enumitem}
+
+\SetEnumitemKey{seclist}{label=\thesection.\arabic*,left=0pt}
+\SetEnumitemKey{subseclist}{label=\thesubsection.\arabic*,left=0pt}
+\SetEnumitemKey{subsubseclist}{label=\thesubsubsection.\arabic*,left=0pt}
+\SetEnumitemKey{subsecsublist}{label*=.\arabic*,left=-\leftmargin}
+\SetEnumitemKey{subsubsecsublist}{label*=.\arabic*,left=-\leftmargin}
+
+\begin{document}
+
+\title{CASA VLBI Requirements} \author{Mark Kettenis
+  \footnote{Based on an earlier document written by Walter Brisken,
+    Vincent Fish, Jeff Kern and Shep Doeleman}}
+\maketitle
+
+\section{Introduction}
+
+Over the last three years, a software development team from JIVE, in
+collaboration with the CASA team at NRAO has worked on adding VLBI
+capabilities to CASA.  Basic VLBI data reduction is now possible in
+CASA and this functionality has been successfully used in the
+rPICARD\footnote{M. Janssen et al, rPICARD: A CASA-based calibration
+  pipeline for VLBI data, A\&A 626, A75 (2019)} pipeline that was used
+for verification of the recent Event Horizon Telescope results.  But
+while a \texttt{fringefit} task is now available in CASA, some of the
+bells and whistles available in older packages like AIPS are still
+missing.  In addition to that there still is other functionality that
+is used for more advanced VLBI data reduction that is not yet
+available in CASA.  As such CASA is not yet a fully functional
+replacement for AIPS.
+
+This document is an attempt to identify what functionality is still
+missing.  It collects stakeholder input collected at various training
+events and discussions with the rPICARD devloper with requirements
+from an earlier NRAO document written by Walter Brisken, Vincent Fish,
+Jeff Kern and Shep Doeleman.  In fact a large fraction of the
+requirements in this document and some of the motivations for those
+requirements were taken verbatim from that document.  Some of the
+requirements have been dropped even if the functionality has not been
+implemented in CASA because it was felt that those requirements were
+better addressed in a pipeline that uses CASA as a basis.  In fact a
+lot of the functionality related to incoherent fringe fitting has been
+implemented already in the rPICARD pipeline.  Requirements specific to
+geodesy have also been dropped for now as we consider them out of
+scope for the current devlopment effort at JIVE.  These requirements
+may be brought back at a later stage.
+
+Our intention is to share this document with stakeholders and use
+their input to prioritize future development efforts.  We intend to
+update this document with that input.
+
+
+\section{Generic}
+
+This section identifies some requirements that are related to the
+general calibration infrastructure in CASA.
+
+\begin{enumerate}[seclist]
+
+\item Interpolation during application of various calibration tables
+  (including, but not limited to fringe fitting) should have the
+  capability of respecting scan boundaries.
+
+\item Visibility data should be flagged in a polarization-independent
+  fashion if desired by the user (currently CASA flags all
+  polarization products if one of them ends up being explicitly or
+  implicitly flagged).
+
+\item Geometry-dependent calibration (parallactic angle, gaincurve,
+  opacity, etc.) should use the POINTING.DIRECTION instead of
+  FIELD.DELAY{\_}DIR / PHASE{\_}DIR / REFERENCE{\_}DIR.
+
+  Question: How does mean vs. apparent position factor into this?
+
+  Answer: These two coordinates only differ substantially when
+  pointing near the horizon.  For dish antennas the gain curves tend
+  to be very flat at low elevations so this isn't important in that
+  case.  However for aperture arrays the effect may be considerable.
+
+\item It shall be possible to select data by labeled intent.
+
+\item It shall be possibe to add intents to an existing Measurement Set.
+  
+\end{enumerate}
+
+
+\section{Amplitude calibration}
+
+Amplitude (gain) calibration for VLBI is done quite differently from
+other types of arrays since typically there are no usable flux
+calibrators at VLBI resolution.  In particular the traditional gain
+calibration method using the \texttt{setjy} task cannot be used for
+VLBI.
+
+
+\subsection{System temperatures}
+
+\begin{enumerate}[subseclist]
+
+  \item It shall be possible to use gain constrained self calibration
+    to solve (at least approximately, on bright sources) the
+    appropriate gains on a specified set of antennas to work around
+    cases where system temperature data is either not available or is
+    not reliable for all antennas. The ANTUSE parameter in AIPS tasks
+    CALIB is used for this purpose.
+
+    Note: selfcal is available in CASA but there is no equivalent of
+    the ANTUSE parameter.
+
+\end{enumerate}
+
+
+\subsection{Opacity correction}
+
+\begin{enumerate}[subseclist]
+
+\item It shall be possible to specify a zenith opacity.
+
+\item It shall be possible to use system temperature measurements made
+  over a specified period as input to solve for zenith opacity.
+
+  \begin{enumerate}[subsecsublist]
+
+  \item For antennas with characterized spill-over and metrology data,
+    the ground temperature should be estimated and removed before
+    solving for zenith opacity.
+
+  \item It shall be possible to specify an elevation range for data to
+    fit.
+
+  \item Both least squares and a robust fitting algorithm shall be available.
+
+  \item Given zenith opacity, possibly as a function of time,
+    correction for opacity based on sec(z) shall be possible.
+    
+  \end{enumerate}
+  
+\end{enumerate}
+
+Note: This functionality is present in rPICARD.  Integrating that code
+into CASA is probably desirable.
+
+
+\subsection{Antenna gain}
+
+\begin{enumerate}[subseclist]
+
+\item Elevation gain curve tables naturally imported with visibility
+  data should be usable.
+
+\item Application of different elevation gain curves on different
+  sub-bands should be supported.  This is especially important in
+  cases where dual-band observing (e.g., S- band and X-band
+  simultaneously) is employed.
+
+  Note: This can already be done in CASA because gain curves are
+  realized and resolved per spectral window.  There may be ambiguities
+  that need to be resolved though.
+
+\item It should be possible to plot gain curves as function of elevation.
+
+\item It should be possible to plot gain curves as function of time
+  (following antenna pointing).
+
+  Note: There is a wish to support such a feature generally, plotting
+  the calibration as a function of the relevant interpolation axes in
+  the MS (time, freq).  The option of plotting the calibration
+  parameters or their effect (the elements of the Jones matrix) may be
+  desirable.
+
+\end{enumerate}
+
+Currently gain curves are not automatically imported when using the
+\texttt{importfitsidi} task.  Instead helper scripts are available to
+create gain curve tables from GAIN{\_}CURVE tables included in
+FITS-IDI files or from text files in ANTAB/VLOG format.  A challenge
+here is that gain curves need to be converted from ``total power''
+representation into ``voltage'' representation, which isn't always
+possible for (ill-defined) gain curves that aren't positive across the
+entire elevation range.  When applying such a gain curve, visibilities
+outside the region where the gain curve is valid should be flagged.
+
+
+\subsection{Decorrelation correction}
+
+\begin{enumerate}[subseclist]
+
+\item Correlator averaging parameters, possibly as a function of
+  baseline, should be stored with the visibility database.
+
+\item It shall be possible to optionally correct for decorrelation
+  without requiring an additional pass through the data (on-the-fly
+  application).
+
+\item This correction shall be based on the cumulative delay/rate
+  calibrations being applied.  This correlation should only be applied
+  once as it can't be done properly in a cumulative fashion.
+
+\end{enumerate}
+
+
+\subsection{Calibration editing}
+
+\begin{enumerate}[subseclist]
+
+\item It shall be possible to manually edit input calibration data.
+
+  Note: The \texttt{plotms} and \texttt{pltocal} tasks already support
+  manual flagging of calibration tables.
+
+\end{enumerate}
+
+
+\section{Pulse Cal data handling}
+
+Phase (or equivalently, pulse) calibration is a VLBI technique used to
+correct the sampled data for instrumental effects. For example, in
+geodesy one would like the observations to measure the baseline delay
+to a fixed point on each antenna, typically the intersection of
+axes. However, the data are sampled on the ground after passing
+through cables, connectors, down-converters, and filters.  By injecting
+a series of pulses as close to the front end as is practical, a series
+of tones is produced in the frequency domain, which can be used to
+solve for both delay and phase effects between the front end and the
+samplers.
+
+For example, in the broadband system used for the NASA Space Geodesy
+Program, pulses are injected at a 5MHz rate, producing tones (or
+rails) at 5MHz intervals.  These tones are extracted in the
+correlation software and written to a calibration file that
+accompanies the visibility data, one per antenna. The phase cal data
+consist of triplets of frequency, amplitude, and phase, tabulated
+every second.
+
+The fringe-fitting software (e.g., HOPS FOURFIT) finds via FFT the
+best-fit line of phase as a function of frequency, using all of the
+tones in a channel or any desired subset thereof (in the case where
+known RFI corrupts tones). The slope determines a delay, which is then
+differenced on the baseline and applied to the complex visibility
+data.  The visibilities are also adjusted by the differential phase
+(at mid-band) of the two fits.
+
+This process allows data that have passed through different
+anti-aliasing filters and samplers to be registered with one another,
+thus allowing phase-coherent delay solutions across multiple wide IFs.
+This technique has been applied with success to group delay extraction
+over a frequency span of about 6 GHz.
+
+The comb frequency structure causes ambiguities in measured delay; any
+delay measurement solely determined by a comb with frequency interval
+Q can only determine delay modulo 1/Q. Resolution of this ambiguity
+can come from fringe fitting some data. Usually only a very small
+amount of data for an entire experiment is required as delays
+typically don’t change by more than 10s of nanoseconds and the
+ambiguities are typically 200 or 1000 nanoseconds. Continuity of delay
+through time can be used to extend the period of ambiguity resolution.
+
+\subsection{Data Structure}
+
+\begin{enumerate}[subseclist]
+
+\item Import of Pulse Cal data shall be supported
+
+\begin{enumerate}[subsecsublist]
+
+\item Pulse cal data attached to a FITS file shall be importable.
+
+\item Each pulse cal measurement contains a real and imaginary value
+  and the time interval corresponding to that measurement.
+
+\item A pulse cal set is the collection of all pulse cal measurements
+  made over one time interval at one antenna.
+
+\end{enumerate}
+
+\item Between 0 and B+1 pulse cal tones per sub-band must be supported
+  where B is sub-band bandwidth in MHz.
+
+\item A cadence as fast as one pulse cal set per visibility
+  integration time should be supported.
+
+  Note: This requirement contradicts the example system given above
+  and probably needs to be changed.  Maybe ``faster than one pulse cal
+  set per visibility''?
+
+\item Time averaged pulse cal data should be supported; averaging
+  intervals may be integer multiples of the visibility integration
+  time or not.
+
+\item An optional ``cable cal'' value, containing an additional
+  instrumental delay correction, should be handled along with pulse
+  cal data.
+
+\item Different antennas may have different pulse cal intervals and/or
+  number of tones.
+
+\item Single precision floating point is sufficient for the real and
+  imaginary parts of each pulse cal measurement; time should be
+  accurately representable to at least 1ms.
+
+\end{enumerate}
+
+\subsection{Pulse Cal Data Selection}
+
+\begin{enumerate}[subseclist]
+
+\item It should be possible to plot a time series of pulse cal
+  amplitude or phase as a function of time for a selection of
+  tones. Similarly the cablecal values should be plottable.
+
+\item It should be possible to view the amplitude or phase of the time
+  series of a pulse cal set as a raster image.
+
+\item It should be possible to flag certain pulse cal values based on
+  a priori information or interactive editing processing; flagged
+  values should be ignored in computations involving the pulse cal
+  data.
+
+\end{enumerate}
+
+\subsection{Calculations to perform}
+
+\begin{enumerate}[subseclist]
+
+\item It shall be possible to determine the delay as a function of
+  time based on the Pulse Cal data.
+
+\begin{enumerate}[subsecsublist]
+
+\item Solutions should be determined separately for each antenna and
+  separately for each spectral window.
+
+\item It shall be possible to determine a single delay value from
+  multiple subbands.
+
+\end{enumerate}
+
+\item In cases where cable cal data is present there should be the
+  option to include the cable cal correction in the computed delay.
+
+\item The determined delays should be stored in a table that can be
+  further edited and applied as necessary.
+
+\item It shall be possible to time average pulse cal values.
+
+\item It shall be possible to form a bandpass calibration table based
+     on pulse cal sets.
+
+\item It shall be possible to form a gain calibration table by
+  extracting the amplitude and/or phase of a single tone of each
+  spectral window.
+
+\item It shall be possible to use fringe-fit determined delays to
+  resolve pulse cal delay ambiguities.
+
+Note: This has been partly prototyped in Python by Des Small.
+
+\end{enumerate}
+
+
+\section{Fringe fitting}
+
+\subsection{General Delay Fitting Requirements}
+
+\begin{enumerate}[subseclist]
+
+\item It shall be possible to determine and correct cross-polarized
+  delays and phases.
+
+\begin{enumerate}[subsecsublist]
+
+\item It shall be possible to include in the fit a dispersive
+  multi-band delay component proportional to $1/\nu^2$. This is
+  relevant for ionospheric calibration.
+
+  Note: Implemented.  Should be available in CASA 5.7/6.1.
+
+\item It shall be possible to solve for any combination of delay,
+  dispersive delay, rate and phase, where unsolved parameters are
+  assumed to be zero.  This should include the possibility to solve
+  for rate if only a single frequency channel is present.
+
+  Note: This is different than zeroing solutions after solving.
+  
+  Note: Des is of the opinion that excluding the phase makes no sense,
+  Should be available in CASA 5.7/6.1.
+
+\end{enumerate}
+
+\end{enumerate}
+
+
+\subsection{Modes of operation}
+
+\begin{enumerate}[subseclist]
+
+\item Additonal modes of operation shall be implemented for the
+  \texttt{fringefit} task.
+
+\begin{enumerate}[subsecsublist]
+
+\item It shall be possible to overlap time ranges by a specified
+  amount (see the SOLSUB parameter for AIPS task \texttt{FRING}).
+
+\item In cases where the cadence does not evenly span the data valid
+  period of a scan an intelligent algorithm to shift the intervals
+  shall be invoked.
+
+\item It shall be possible for delay and rate windows, both center and
+  width, to be specified by the user on a per-antenna basis.
+
+\end{enumerate}
+
+\item It should be possible to smooth calibration solutions obtained
+  using the CASA \texttt{fringefit} task.
+
+\begin{enumerate}[subsecsublist]
+
+\item It should be possible to smooth parameters of these solutions
+  (phase, delay, rate) individually.
+
+\end{enumerate}
+
+\item It should be possible to combine data by IF polarization prior
+  to determination of the delay paramters.
+
+  Question: Should this combine just the parallel hands?  Stacking
+  cross-hands could be helpful when working on data with poor
+  polarization leakage.  Should this be a simple stacking or is this
+  better done as a simultaneous fit?  The goal here is additional S/N
+  and Walter Brisken suggests averaging visibilities across
+  polarisations.
+
+\item It shall be possible to use alternative weighting schemes in
+  the CASA \texttt{fringefit} task (see the \texttt{WEIGHTIT}
+  parameter for AIPS task \texttt{FRING}).  At least the standard
+  weighting by $1/\sigma^2$, weighting by $1/\sigma$ and no weighting
+  (weighting by $1$) shall be supported.
+
+\item It shall be possible to use baseline stacking techniques to
+  assist fringe detection.
+
+\item It shall be possible to combine spectral windows (in order to do
+  a multi-band fit) even if there are large gaps (in frequency)
+  between spectral windows.
+
+\item It shall be possible to combine spectral windows even if the
+  channels of different spectral windows do not align on a single
+  frequency grid.
+
+  Note: A possible approach has been prototyped in Python by Des Small.
+
+\item An implementation of Fringe-rate mapping shall be provided.
+
+  Note: This is required for maser sources where it is hard/impossible
+  to get a good starting postion.  The algorithm implemented in AIPS
+  is sufficient but cumbersome to use.  More advanced algorithms
+  exists but may be out of scope.
+
+\end{enumerate}
+
+
+\section{Polarization}
+
+The following requirements relate to the handling of data correlated
+with full polarization (i.e., all 4 polarization products).
+
+\subsection{ Polatization calibration}
+
+\begin{enumerate}[subseclist]
+
+\item It must be possible to determine and correct for antenna
+  polarization leakages including using \emph{resolved} polarization
+  calibrators.
+
+  Note: Prototype implementation exists (by Ivan Marti-Vidal) in
+  (mostly) Python.
+
+\item It must be possible to apply the (co)-parallactic angle
+  correction for X-Y mounts.  This is necessary to support calibration
+  of data that includes the Hobart 26m antenna which is part of the
+  Australian Long Baseline Array (LBA).
+
+  Note: Implementation (for casacore) exists but has not been verified yet.
+
+\end{enumerate}
+
+
+\subsection{Calibration}
+
+\begin{enumerate}[subseclist]
+
+\item It shall be possible to transfer delay calibration information
+  across polarizations to increase coherence time:
+
+\begin{enumerate}[subsecsublist]
+
+\item It shall be possible to use fringe solutions in one polarization
+  (e.g., RR) to assist in fringe detection in another polarization
+  (e.g., RL) via baseline stacking techniques.
+
+\item It shall be possible to use the visibility phases as a function
+  of time on a baseline in one polarization to attempt to extend the
+  coherence time in another polarization.
+
+\end{enumerate}
+
+\end{enumerate}
+
+
+\section{Model accountability and manipulation}
+
+Note: The original introduction here scetched an ambition to implement
+geodetic capabilities into CASA to allow absolute astrometry.  This is
+not the ambition of the current work that is being done.  However some
+of these aspects are relevant for good relative astrometry support as
+well.
+
+\subsection{Delay model propagation}
+
+\begin{enumerate}[subseclist]
+
+  \item Throughout processing the delay model shall be stored in
+    conjunction with the data, further the delay model shall be kept
+    consistent with the current state of the data.
+
+  \item Delay model versioning must be maintained even after splitting
+    and recombining measurement sets.
+
+  \item Throughout processing delays shall be represented to at least1
+    femtosecond resolution.
+
+  \item It shall be possible to maintain separation of delay effects
+    (i.e., vacuum propagation, atmospheric terms, etc.) within the
+    delay model.
+
+  \item It must be possible to store the delay model as a polynomial
+    spline. Polynomials with up to 6 terms must be supported. The
+    interval of validity of a specific polynomial must be stored and
+    can range from 1 second to 1 hour. A given polynomial must be
+    identified with a particular source.
+
+  \item The delay model used during correlation shall be imported with
+    the visibility data..
+
+  \item All calibrations containing a delay shall modify the delay
+    model table to ensure consistence with the data, in particular the
+    total delay shall be unchanged.
+
+  \item During any operation where a new visibility database is
+    formed, a delay model table consistent with the state of the new
+    database shall be written
+
+\end{enumerate}
+
+Note: Some of these requirements are not compatible with the way CASA
+operates and/or fundamental design principles of the MeasurementSet.
+It is not unlikely that these requirements will need adjustment.
+These requirements are maintained for now as some of them will be
+needed to implement calibrations mentioned in the next section.
+
+\subsection{Delay model adjustments}
+
+Earth Orientation Parameters (EOPs) are used to describe the
+orientation and spin phase of the earth relative to a standard model
+of a uniformly spinning orb. The deviations from uniform motion are
+unpredictable as they are largely driven by transfer of angular
+momentum between the earth's crust, the oceans, atmosphere and earth
+core. Typically final best estimates for the EOPs are only available a
+week or two after observation, which may be after correlation.
+
+\begin{enumerate}[subseclist]
+
+\item It shall be possible to apply delay corrections to the data with
+  improved EOPs\footnote{The equivalent functionality is implemented
+    in AIPS task \texttt{CLCOR} when using \texttt{OPCODE = 'EOPS'}.}.
+
+  Note: Current thinking is that it would be better to recalculate the
+  model using updated EOPs instead of attempting to do a differential
+  correction based on the difference in EOPs
+
+\item A mechanism for automatically updating EOP data should be
+  implemented.
+
+  Note: VLBI correlators tend to use a different EOP data product than
+  the IERS EOPs that are already present in the CASA data repository.
+
+\item Source position adjustment should be possible.
+
+  \begin{enumerate}[subsecsublist]
+
+  \item New source positions shall be specified in J2000 frame coordinates.
+
+  \item The applied correction shall produce phases equivalent to those that would come from.
+    correlation with the new source coordinates.
+
+  \item The coordinates of the correlation center in the data set shall be updated.
+
+  \item The baseline vectors (U,V,Ws) shall be updated to be consistent with the new correlation
+    center.
+
+  \item Source position corrections up to 1 arcminute should be supported.
+
+  \end{enumerate}
+
+  Note: While this functionality is in principle implemented in the
+  \texttt{fixvis} task, there is a strong suspicion that the
+  underlying model calculations may not be accurate enough.
+  
+\end{enumerate}
+
+
+\subsection{Delay model replacement}
+
+\begin{enumerate}[subseclist]
+
+\item It shall be possible to derive a delay correction from the
+  difference between the current delay model table and an external
+  delay model.
+
+\end{enumerate}
+
+
+\section{Miscellaneous requirements}
+
+\subsection{Ionospheric Correction}
+
+\begin{enumerate}[subseclist]
+
+\item It shall be possible to derive a dispersive delay calibration
+  table from external ionosphere data. (Equivalent to AIPS task
+  \texttt{TECOR})
+
+\item External ionosphere data in IONEX format should be downloaded on
+  demand from cddis.gsfc.nasa.gov. (For reference implementation, see
+  AIPS task \texttt{TECOR})
+
+\end{enumerate}
+
+\appendix
+
+\section{Completed Requirements}
+
+\subsection{Amplitude calibration}
+
+\subsubsection{Autocorrelation corrections}
+
+\begin{enumerate}[subsubseclist]
+
+\item A facility to divide cross-correlation values by the geometric
+  mean of the associated and time- coincident autocorrelations is -
+  required.
+
+  Note: implemented by accor.
+
+\item A mechanism to plot the time variability of sub-band average
+  autocorrelations would be useful.
+
+  Note plotms can do this already.
+  
+\end{enumerate}
+
+\subsubsection{System temperature}
+
+\begin{enumerate}[subsubseclist]
+
+  \item System temperature tables imported with visibility data shall
+    be able to be applied to the data and weights.
+
+    Note: implemented in gaincal.
+
+  \item It should be possible to import system temperature data in the
+    standard ``TSM'' format (See AIPS task ANTAB)
+
+    Note: CASA expects this data to be present in the
+    SYSTEM\_TEMPERATURE table of the FITS-IDI file upon import.  Tools
+    exist to append this data to the FITS-IDI file.  These tools
+    accept both ``standard'' AIPS ANTAB format and VLBA VLOG format.
+
+\end{enumerate}
+
+\subsubsection{Digital corrections}
+
+\begin{enumerate}[subsubseclist]
+
+\item It shall be possible to apply the Van Vleck (and its >1-bit
+  equivalents) to the visibility data.
+
+  Note: implemented in importfitsidi
+
+\end{enumerate}
+
+
+\subsection{Fringe Fitting}
+
+\subsubsection{General Delay Fitting Requirements}
+
+\begin{enumerate}[subsubseclist]
+
+\item It shall be possible to determine singleband delay, multiband
+  delay, and rate solutions on a single baseline.
+
+  Note: While this requirement is met, more work may be necessary to
+  make its use practical as HOPS-style baseline-based fringe fitting
+  isn't fully implemented.
+
+\item It shall be possible to determine global antenna-based
+  single-band delay, multiband delay, and rate solutions on an array
+  of baselines or subset thereof.
+
+  Note: implemented in fringefit.
+
+\end{enumerate}
+
+\subsubsection{Selection}
+
+Note: Full power of CASA's data selection interface is availabe in fringeit.
+
+\subsection{Modes of operation}
+
+\begin{enumerate}[subsubseclist]
+
+\item It must be possible to specify a source model for fringe fitting.
+
+  Note: Generic CASA mechanism to divide out a model is available in
+  fringefit.
+
+\item It must be possible to specify a desired solution cadence
+  (equivalent to the SOLINT parameter in the AIPS task FRING).
+
+  Note: implemented by the solint parameter in fringefit.
+
+\item It must be possible to request a single fringe solution on each
+  and every scan.
+
+  Note: implemented in fringefit though generic CASA data selection.
+
+\item It must be possible to request fringe solutions spanning more
+  than one scan.
+
+  Note: implemented in fringefit though generic CASA data selection.
+
+\item It should be possible to combine data by IF and/or polarization
+  prior to determination of the delay paramters.
+
+  Note: implemented in fringefit through generic CASA calibration
+  infrastructure.  Not sure if/how combining by polarization works.
+
+\item It shall be possible for the user to specify delay and rate
+  windows in which to search.
+
+  Note: Implemented in fringefit, but parameters are not per-antenna.
+
+\item It must be possible for the user to specify the minimum SNR of
+  acceptable solutions with a sensible default value.
+
+  Note: Implemented in fringefit.
+
+\end{enumerate}
+
+\subsection{Polarization}
+
+\subsubsection{Polarization Calibration}
+
+\begin{enumerate}[subsubseclist]
+
+\item It must be possible to correct observed visibility phases for
+  field rotation angle (parallactic angle and elevation angle)
+  effects.
+
+  Note: Implemented through parang parameter in various calibration
+  tasks.  Support for Nasmyth mounts has been implemented.  X-Y mount
+  still missing.
+
+\end{enumerate}
+
+\subsubsection{Polarization Plotting}
+
+Note: Implemented in plotms.
+
+\subsubsection{Polarization Basis Conversion}
+
+Note: Implemented in Ivan Mart-Vidal's polconvert package.
+
+
+\subsection{Model accountability and manipulation}
+
+\subsubsection{Delay model adjustments}
+
+\begin{enumerate}[subsubseclist]
+
+\item It shall be possible to correct for antenna position errors.
+
+  Note: Implemented in the \texttt{gencal} task.
+
+  \begin{enumerate}[subsubsecsublist]
+
+  \item New antenna position shall be specified as new ITRF frame
+    coordinates for one or more antennas.
+
+  \item Antenna position corrections up to 10 meters should be supported.
+
+  \item The antenna position as reported in the antenna table shall
+    be updated.
+
+    Question: Are the positions actually updated?
+
+  \end{enumerate}
+
+\item Manual delay and rate adjustment shall be supported
+
+  Note: This is certainly possible by creating calibration tables
+  using the Python interfaces.  Support in the \texttt{gencal} task
+  may be desirable.
+
+\end{enumerate}
+
+\subsection{Data export}
+
+\subsubsection{Data}
+
+\begin{enumerate}[subsubseclist]
+
+\item It shall be possible to export data in AIPS FITS (UVFITS) format.
+
+  Note: Implemented in exportuvfits.
+  
+\item It should be possible to export data in a well-defined text format.
+
+  Note: CASA tables can be written out into text format using a python
+  interface.
+  
+\end{enumerate}
+
+\subsubsection{Calibration}
+
+\begin{enumerate}[subsubseclist]
+  
+\item It should be possible to export calibration information in a
+  well-defined text format.
+
+\end{enumerate}
+
+
+\section{Dropped Requirements}
+
+\subsection{Data Import}
+
+\subsubsection{Data selection}
+
+\begin{enumerate}[subseclist]
+
+\item Selection during import shall be supported.  Where appropraite
+  data selection should apply to calibration tables as well as
+  visibility data.
+
+  Rationale: Data selection during import is not something that CASA
+  supports in general (with the exception of selecting scans in
+  importasdm).  CASA has powerfull tools for data selection at various
+  other stages.  For example, the \texttt{mstransform} task can be
+  used to create a Measurement Set based on a subset of the data.
+
+\item Precision and data dimensions
+
+  Rationale: CASA meets all these requirements, although subarray
+  support is largely implicit.
+
+\end{enumerate}
+
+\subsection{Amplitude calibration}
+
+\subsubsection{Primary beam correction}
+
+\begin{enumerate}[subsubseclist]
+
+\item A correction for the antenna primary beam based on the vector
+  offset between the antenna pointing center and the correlator phase
+  center shall be possible.
+
+\item It should be possible to correct for the primary beam without
+  detailed user input, either through built in models or through
+  automated download.
+
+\item It should be possible for a user to supply a detailed primary
+  beam model tabulated in two dimensions.
+
+\item It should be possible for a user to supply a simple radial
+  polynomial model.
+
+\item Primary beam corrections for phased arrays shall be possible.
+
+  \begin{enumerate}[subsubsecsublist]
+
+  \item Input parameters describing a general elliptical Bessel
+    or Gaussian zenith beam shall be supported.
+
+  \item This zenith beam shall be appropriately stretched as a
+    function of time to account for fore-shortening of the array as seen by the source.
+
+  \item The beam parameters should be scaled in angle with observing
+    wavelength during application.
+
+  \end{enumerate}
+
+\end{enumerate}
+
+Note: This is probably best implemented in a pipeline such as rPICARD
+based on the building blocks already provided by CASA.
+
+\subsubsection{Autocorrelation template fitting}
+
+Was used in the past to measure antenna gains by comparing
+autocorrelation spectra on masters.  Not clear if this is still used.
+
+\subsection{Fringe Fitting}
+
+\subsubsection{Modes of operation}
+
+\begin{enumerate}[subsubseclist]
+
+\item \[low priority\] It shall be possible to fit delay as a spline
+  function over a period of time possibly greater than the coherence
+  time.
+
+  \begin{enumerate}[subsubsecsublist]
+
+  \item The user shall have control over the spline degrees of freedom.
+
+  \item Continuity of the spline across scan boundaries must be selectable.
+
+  \item It should be possible to construct a spline solution based on
+    tabulated solutions.
+
+  \end{enumerate}
+
+\end{enumerate}
+
+Note: Short coherence time algorithms have been implemented in rPICARD.
+
+\subsubsection{Visualization}
+
+Considered out of scope of the current effort.  Probably should be
+done as a seprate tool, potentially as an extension to jiveplot.
+
+\subsection{Short coherence time algorithms}
+
+Note: Short coherence time algorithms have been implemented in rPICARD.
+
+\subsection{Data export}
+
+\subsubsection{Data}
+
+\begin{enumerate}[subsubseclist]
+  \item It must be possible to export data, including visibilities and
+    closure quantities.
+
+  \item It shall be possible to export data in OIFITS format.
+
+  \item It shall be possible to export data in Mark4 format.
+    
+\end{enumerate}
+
+\end{document}
