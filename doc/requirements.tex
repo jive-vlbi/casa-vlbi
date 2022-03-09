@@ -62,10 +62,7 @@ general calibration infrastructure in CASA.
   (including, but not limited to fringe fitting) should have the
   capability of respecting scan boundaries.
 
-\item Visibility data should be flagged in a polarization-independent
-  fashion if desired by the user (currently CASA flags all
-  polarization products if one of them ends up being explicitly or
-  implicitly flagged).
+\item Completed for CASA 6.1.
 
 \item Geometry-dependent calibration (parallactic angle, gaincurve,
   opacity, etc.) should use the POINTING.DIRECTION instead of
@@ -146,17 +143,9 @@ into CASA is probably desirable.
 
 \begin{enumerate}[subseclist]
 
-\item Elevation gain curve tables naturally imported with visibility
-  data should be usable.
+\item Completed for CASA 6.2
 
-\item Application of different elevation gain curves on different
-  sub-bands should be supported.  This is especially important in
-  cases where dual-band observing (e.g., S- band and X-band
-  simultaneously) is employed.
-
-  Note: This can already be done in CASA because gain curves are
-  realized and resolved per spectral window.  There may be ambiguities
-  that need to be resolved though.
+\item Completed for CASA 6.2
 
 \item It should be possible to plot gain curves as function of elevation.
 
@@ -171,15 +160,11 @@ into CASA is probably desirable.
 
 \end{enumerate}
 
-Currently gain curves are not automatically imported when using the
-\texttt{importfitsidi} task.  Instead helper scripts are available to
-create gain curve tables from GAIN{\_}CURVE tables included in
-FITS-IDI files or from text files in ANTAB/VLOG format.  A challenge
-here is that gain curves need to be converted from ``total power''
-representation into ``voltage'' representation, which isn't always
-possible for (ill-defined) gain curves that aren't positive across the
-entire elevation range.  When applying such a gain curve, visibilities
-outside the region where the gain curve is valid should be flagged.
+Gain curves are now automatically imported when using the
+\texttt{importfitsidi} task when GAIN{\_}CURVE tables are present in
+FITS-IDI files.  Helper scripts are available to create gain curve
+tables from text files in ANTAB/VLOG format.  These scripts may not
+always work correctly for dual-band observing.
 
 
 \subsection{Decorrelation correction}
@@ -206,7 +191,7 @@ outside the region where the gain curve is valid should be flagged.
 
 \item It shall be possible to manually edit input calibration data.
 
-  Note: The \texttt{plotms} and \texttt{pltocal} tasks already support
+  Note: The \texttt{plotms} and \texttt{plotcal} tasks already support
   manual flagging of calibration tables.
 
 \end{enumerate}
@@ -370,26 +355,13 @@ Note: This has been partly prototyped in Python by Des Small.
 
 \begin{enumerate}[subsecsublist]
 
-\item It shall be possible to include in the fit a dispersive
-  multi-band delay component proportional to $1/\nu^2$. This is
-  relevant for ionospheric calibration.
+\item Completed for CASA 6.1
 
-  Note: Implemented.  Should be available in CASA 5.7/6.1.
-
-\item It shall be possible to solve for any combination of delay,
-  dispersive delay, rate and phase, where unsolved parameters are
-  assumed to be zero.  This should include the possibility to solve
-  for rate if only a single frequency channel is present.
-
-  Note: This is different than zeroing solutions after solving.
-  
-  Note: Des is of the opinion that excluding the phase makes no sense,
-  Should be available in CASA 5.7/6.1.
+\item Completed for CASA 6.1
 
 \end{enumerate}
 
-\item It shall be possible to plot fringefit solutions using the
-  \texttt{plotms} task.
+\item Completed for CASA 6.2
 
 \end{enumerate}
 
@@ -481,7 +453,7 @@ with full polarization (i.e., all 4 polarization products).
   of data that includes the Hobart 26m antenna which is part of the
   Australian Long Baseline Array (LBA).
 
-  Note: Implementation (for casacore) exists but has not been verified yet.
+  Note: Implementation (for casacore) exists.
 
 \end{enumerate}
 
@@ -637,9 +609,22 @@ week or two after observation, which may be after correlation.
 
 \end{enumerate}
 
+
 \appendix
 
 \section{Completed Requirements}
+
+\subsection{Generic}
+
+\begin{enumerate}[subseclist]
+
+\item Visibility data should be flagged in a polarization-independent
+  fashion if desired by the user (currently CASA flags all
+  polarization products if one of them ends up being explicitly or
+  implicitly flagged).  (was 2.2, completed for CASA 6.1)
+
+\end{enumerate}
+
 
 \subsection{Amplitude calibration}
 
@@ -679,6 +664,26 @@ week or two after observation, which may be after correlation.
 
 \end{enumerate}
 
+
+\subsubsection{Antenna gain}
+
+\begin{enumerate}[subsubseclist]
+
+\item Elevation gain curve tables naturally imported with visibility
+  data should be usable.  (was 3.3.1, completed for CASA 6.2)
+
+\item Application of different elevation gain curves on different
+  sub-bands should be supported.  This is especially important in
+  cases where dual-band observing (e.g., S- band and X-band
+  simultaneously) is employed.  (was 3.3.2, completed for CASA 6.2)
+
+  Note: This can already be done in CASA because gain curves are
+  realized and resolved per spectral window.  There may be ambiguities
+  that need to be resolved though.
+
+\end{enumerate}
+
+
 \subsubsection{Digital corrections}
 
 \begin{enumerate}[subsubseclist]
@@ -709,6 +714,23 @@ week or two after observation, which may be after correlation.
   of baselines or subset thereof.
 
   Note: implemented in fringefit.
+
+\item It shall be possible to include in the fit a dispersive
+  multi-band delay component proportional to $1/\nu^2$. This is
+  relevant for ionospheric calibration.  (was 5.1.1.1, completed for CASA 6.1)
+
+\item It shall be possible to solve for any combination of delay,
+  dispersive delay, rate and phase, where unsolved parameters are
+  assumed to be zero.  This should include the possibility to solve
+  for rate if only a single frequency channel is present.  (was
+  5.1.1.2, completed for CASA 6.1)
+
+  Note: This is different than zeroing solutions after solving.
+  
+  Note: Des is of the opinion that excluding the phase makes no sense.
+
+\item It shall be possible to plot fringefit solutions using the
+  \texttt{plotms} task.  (was 5.1.2, completed for CASA 6.2)
 
 \end{enumerate}
 
