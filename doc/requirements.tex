@@ -448,12 +448,7 @@ with full polarization (i.e., all 4 polarization products).
   Note: Prototype implementation exists (by Ivan Marti-Vidal) in
   (mostly) Python.
 
-\item It must be possible to apply the (co)-parallactic angle
-  correction for X-Y mounts.  This is necessary to support calibration
-  of data that includes the Hobart 26m antenna which is part of the
-  Australian Long Baseline Array (LBA).
-
-  Note: Implementation (for casacore) exists.
+\item Completed for CASA 6.4.
 
 \end{enumerate}
 
@@ -482,7 +477,7 @@ with full polarization (i.e., all 4 polarization products).
 
 \section{Model accountability and manipulation}
 
-Note: The original introduction here scetched an ambition to implement
+Note: The original introduction here sketched an ambition to implement
 geodetic capabilities into CASA to allow absolute astrometry.  This is
 not the ambition of the current work that is being done.  However some
 of these aspects are relevant for good relative astrometry support as
@@ -633,7 +628,7 @@ week or two after observation, which may be after correlation.
 \begin{enumerate}[subsubseclist]
 
 \item A facility to divide cross-correlation values by the geometric
-  mean of the associated and time- coincident autocorrelations is -
+  mean of the associated and time-coincident autocorrelations is
   required.
 
   Note: implemented by accor.
@@ -688,7 +683,7 @@ week or two after observation, which may be after correlation.
 
 \begin{enumerate}[subsubseclist]
 
-\item It shall be possible to apply the Van Vleck (and its >1-bit
+\item It shall be possible to apply the Van Vleck (and its $>1$-bit
   equivalents) to the visibility data.
 
   Note: implemented in importfitsidi
@@ -793,6 +788,11 @@ Note: Full power of CASA's data selection interface is availabe in fringeit.
   Note: Implemented through parang parameter in various calibration
   tasks.  Support for Nasmyth mounts has been implemented.  X-Y mount
   still missing.
+
+\item It must be possible to apply the (co)-parallactic angle
+  correction for X-Y mounts.  This is necessary to support calibration
+  of data that includes the Hobart 26m antenna which is part of the
+  Australian Long Baseline Array (LBA).
 
 \end{enumerate}
 
