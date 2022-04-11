@@ -22,7 +22,7 @@ into a Measuarement Set (MS) format.
 
 ### Appending the system temperatures to the FITS IDI files
 
-You can run it either via the standalone script:
+You can run it either via the following standalone command:
 
 ```bash
 append_tsys.py  {antabfile}  {idifiles}
@@ -46,7 +46,7 @@ available:
 
 ### Appending the Gain Curve and sensitivity to the FITS IDI files
 
-You can run it either via the standalone script:
+You can run it either via the standalone command:
 ```bash
 append_gc.py  {antabfile}  {idifiles}
 ```
@@ -83,7 +83,7 @@ refitted.
 ## Convert the file format or the a-priori flagging
 
 If you have a flag file in AIPS UVFLG format, you can convert it into a
-CASA FLAG format with the following script:
+CASA FLAG format with the following standalone command:
 ```bash
 flag.py  {infile}  {idifiles}
 ```
