@@ -37,5 +37,6 @@ if __name__ == "__main__":
 
     usage = "usage %prog [options] antabfile idifile..."
     parser = optparse.OptionParser(usage=usage)
+    parser.add_option("-r", "--replace", action="store_true", dest="replace")
     (options, args) = parser.parse_args(sys.argv[i:])
-    append_tsys(args[0], args[1:])
+    append_tsys(args[0], args[1:], options.replace)

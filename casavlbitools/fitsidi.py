@@ -380,19 +380,23 @@ def process_gc_values(infp, keys, pols, idi, data):
     data.sens_2.append(dpfu['L'])
     return
 
-def append_tsys(antabfile, idifiles):
+def append_tsys(antabfile, idifiles, replace=False):
     # Make sure we're dealing with a list
     if not isinstance(idifiles, list):
         idifiles = [idifiles]
         pass
 
-    # Check if we already have a SYSTEM_TEMPERATURES table
+    # Check if we already have a SYSTEM_TEMPERATURE table
     try:
         hdulist = pyfits.open(idifiles[0])
         hdu = hdulist['SYSTEM_TEMPERATURE']
-        print('SYSTEM_TEMPERATURE table already present in FITS-IDI file')
-        sys.exit(1)
+        if not replace:
+            print('SYSTEM_TEMPERATURE table already present in FITS-IDI file')
+            sys.exit(1)
+            pass
+        update = True
     except KeyError:
+        update = False
         pass
 
     idi = IdiData(idifiles)
@@ -506,19 +510,27 @@ def append_tsys(antabfile, idifiles):
                                       'BinTableHDU')
         pass
 
-    hdulist = pyfits.open(idifiles[0], mode='append')
-    hdulist.append(tbhdu)
-    hdulist.close()
+    if update:
+        pyfits.update(idifiles[0], tbhdu.data, tbhdu.header, 'SYSTEM_TEMPERATURE')
+    else:
+        hdulist = pyfits.open(idifiles[0], mode='append')
+        hdulist.append(tbhdu)
+        hdulist.close()
+        pass
     return
 
-def append_gc(antabfile, idifile):
+def append_gc(antabfile, idifile, replace=False):
     # Check if we already have a GAIN_CURVE table
     try:
         hdulist = pyfits.open(idifile)
         hdu = hdulist['GAIN_CURVE']
-        print('GAIN_CURVE table already present in FITS-IDI file')
-        sys.exit(1)
+        if not replace:
+            print('GAIN_CURVE table already present in FITS-IDI file')
+            sys.exit(1)
+            pass
+        update = True
     except KeyError:
+        update = False
         pass
 
     idi = IdiData([idifile])
@@ -668,12 +680,15 @@ def append_gc(antabfile, idifile):
         tbhdu = pyfits.core.new_table(coldefs, header, rows, False,
                                       'BinTableHDU')
         pass
-
-    hdulist = pyfits.open(idifile, mode='append')
-    hdulist.append(tbhdu)
-    hdulist.close()
+    if update:
+        pyfits.update(idifile, tbhdu.data, tbhdu.header, 'GAIN_CURVE')
+    else:
+        hdulist = pyfits.open(idifile, mode='append')
+        hdulist.append(tbhdu)
+        hdulist.close()
+        pass
     return
-    
+
 def find_first_dobs(idifiles):
     first_dobs = datetime.datetime(datetime.MAXYEAR, 12, 31)
     for match in idifiles:
