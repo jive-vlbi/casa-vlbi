@@ -391,9 +391,7 @@ def append_tsys(antabfile, idifiles, replace=False):
         hdulist = pyfits.open(idifiles[0])
         hdu = hdulist['SYSTEM_TEMPERATURE']
         if not replace:
-            print('SYSTEM_TEMPERATURE table already present in FITS-IDI file')
-            sys.exit(1)
-            pass
+            raise RuntimeError('SYSTEM_TEMPERATURE table already present in FITS-IDI file')
         update = True
     except KeyError:
         update = False
@@ -415,8 +413,7 @@ def append_tsys(antabfile, idifiles, replace=False):
                 tsys = key.read_keyfile(keys)
             except RuntimeError:
                 print("\n", keys.getvalue(), file=sys.stderr)
-                sys.exit(1)
-                pass
+                raise RuntimeError('error parsing ANTAB file')
             if tsys and tsys[0] and tsys[0][0][0] == 'TSYS':
                 process_values(fp, tsys, pols, idi, data)
                 pass
@@ -525,9 +522,7 @@ def append_gc(antabfile, idifile, replace=False):
         hdulist = pyfits.open(idifile)
         hdu = hdulist['GAIN_CURVE']
         if not replace:
-            print('GAIN_CURVE table already present in FITS-IDI file')
-            sys.exit(1)
-            pass
+            raise RuntimeError('GAIN_CURVE table already present in FITS-IDI file')
         update = True
     except KeyError:
         update = False
