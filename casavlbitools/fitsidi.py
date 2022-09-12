@@ -346,11 +346,11 @@ def process_gc_values(infp, keys, pols, idi, data):
     try:
         dpfu['R'] = keys['DPFU'][0]
         dpfu['L'] = keys['DPFU'][1]
-        pols.append('R')
-        pols.append('L')
+        pols.add('R')
+        pols.add('L')
     except:
         dpfu['R'] = dpfu['L'] = keys['DPFU']
-        pols.append('X')
+        pols.add('X')
         pass
     try:
         value = keys['POLY'][0]
@@ -531,7 +531,7 @@ def append_gc(antabfile, idifile, replace=False):
     idi = IdiData([idifile])
     data = GainCurveTable()
 
-    pols = []
+    pols = set()
     keys = StringIO()
     fp = open(antabfile, 'r')
     for line in fp:
@@ -649,7 +649,7 @@ def append_gc(antabfile, idifile, replace=False):
         # Repeat the reference data even though the FITS-IDI standard
         # doesn't seem to require it.
         header['RDATE'] = idi.rdate
-        header['NO_POL'] = len(pols)
+        header['NO_POL'] = 2 if len(pols) > 1 else 1
         header['NO_TABS'] = n_tab
         tbhdu = pyfits.BinTableHDU.from_columns(coldefs, header)
     except:
@@ -669,7 +669,7 @@ def append_gc(antabfile, idifile, replace=False):
         # Repeat the reference data even though the FITS-IDI standard doesn't
         # seem to require it.
         header.update('RDATE', idi.rdate)
-        header.update('NO_POL', len(pols))
+        header.update('NO_POL', 2 if len(pols) > 1 else 1)
         header.update('NO_TABS', n_tab)
         rows = len(nterm)
         tbhdu = pyfits.core.new_table(coldefs, header, rows, False,
