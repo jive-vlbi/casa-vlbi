@@ -715,12 +715,13 @@ def convert_flags(infile, idifiles, outfp=sys.stdout, outfile=None):
 
     for flag in flags:
         antenna = flag['ANT_NAME'].upper()
-        timerange = flag['TIMERANG']
-        if timerange == [0.0, 0.0, 0.0, 0.0, 400.0, 0.0, 0.0, 0.0]:
-            timerange = ""
-        elif isinstance(timerange, float) or isinstance(timerange, int):
-            timerange = ""
-        else:
+        if 'TIMERANG' in flag:
+            timerange = flag['TIMERANG']
+            if timerange == [0.0, 0.0, 0.0, 0.0, 400.0, 0.0, 0.0, 0.0]:
+                timerange = ""
+            elif isinstance(timerange, float) or isinstance(timerange, int):
+                timerange = ""
+            else:
             year = datetime.datetime(first_date.year, 1, 1)
             date1 = year + datetime.timedelta(timerange[0] - 1)
             date1 = date1.strftime("%Y/%m/%d")
@@ -729,7 +730,9 @@ def convert_flags(infile, idifiles, outfp=sys.stdout, outfile=None):
             timerange = "%s/%02d:%02d:%02d~%s/%02d:%02d:%02d" % \
                 (date1, timerange[1], timerange[2], timerange[3],
                  date2, timerange[5], timerange[6], timerange[7])
-            pass
+        else:
+            timerange = ""
+            
         if 'BIF' in flag:
             spw = "%d~%d" % (flag['BIF'] -1, flag['EIF'] - 1)
         else:
