@@ -8,6 +8,19 @@ by the EVN Data Archive.
 All scripts can run as a standalone program or being called within the
 CASA environment.
 
+To install these scripts, run the following command:
+
+```bash
+git clone https://github.com/jive-vlbi/casa-vlbi
+```
+
+After the initial install, use the following command to update to the
+latest version of the scripts:
+
+```bash
+git pull https://github.com/jive-vlbi/casa-vlbi
+```
+
 
 ## A-priori gain calibration
 
