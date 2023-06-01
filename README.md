@@ -42,6 +42,7 @@ append_tsys.py  {antabfile}  {idifiles}
 ```
 or via the Python module:
 ```python
+import casavlbitools.fitsidi
 casavlbitools.fitsidi.append_tsys(antabfile, idifiles)
 ```
 
@@ -65,6 +66,7 @@ append_gc.py  {antabfile}  {idifiles}
 ```
 or via the Python module:
 ```python
+import casavlbitools.fitsidi
 casavlbitools.fitsidi.append_gc(antabfile, idifile)
 ```
 This will append gain curves and sensitivity information from the file named by
@@ -84,6 +86,7 @@ gc.py {antabfile}  {gc}  --min-elevation=0.0  --max=elevation=90.0
 ```
 or via the Python module:
 ```python
+import casavlbitools.casa
 casavlbitools.casa.convert_gaincurve(antabfile, gc, min_elevation=0.0, max_elevation=90.0)
 ```
 This creates a gaincurve table with name `gc` from gain curves from the file
@@ -102,6 +105,7 @@ flag.py  {infile}  {idifiles}
 ```
 or using the Python module:
 ```python
+import casavlbitools.fitsidi
 casavlbitools.fitsidi.convert_flags(infile, idifiles, outfp=sys.stdout, outfile=None)
 ```
 
