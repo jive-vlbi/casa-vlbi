@@ -45,7 +45,7 @@
 
   `>>> flagmanager(vis='n14c3.ms', mode='save', versionname='initial')`
 
-- Plot the amplitudes og your data with the plotms task to get some idea
+- Plot the amplitudes of your data with the plotms task to get some idea
   about what's there.  For example, plot amplitude as a function of
   time.
 
@@ -119,11 +119,18 @@
   data.  This can be done using the "ydatacolumn" paraeter.
 
   `>>> plotms(vis="n14c3.ms", xaxis="time",yaxis="amp", scan='2', coloraxis='baseline', ydatacolumn='data', correlation='ll', avgchannel="32", scalar=True, spw='2',antenna='EF')`
+
   `>>> plotms(vis="n14c3.ms", xaxis="time",yaxis="amp", scan='2', coloraxis='baseline', ydatacolumn='corrected', correlation='ll', avgchannel="32", scalar=True, spw='2',antenna='EF')`
 
 
 - Now plot the weights instead of the amplitude.  What has happened to the weights  during calibration?
 
   `>>> plotms(vis="n14c3.ms", xaxis="time",yaxis="wt", scan='2', coloraxis='baseline', ydatacolumn='data', correlation='ll', avgchannel="32", scalar=True, spw='2',antenna='EF')`
+
   `>>> plotms(vis="n14c3.ms", xaxis="time",yaxis="wt", scan='2', coloraxis='baseline', ydatacolumn='corrected', correlation='ll', avgchannel="32", scalar=True, spw='2',antenna='EF')`
 
+
+Before calibration the weights were (nearly) identical for all the
+baselines.  After calibration the weight are different.  The weight of
+baselines to less sensitive antennas will be lower than those to more
+sesitive antennas
