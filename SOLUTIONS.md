@@ -17,6 +17,7 @@
   write the output to a file for future reference.
 
   `>>> listobs(vid='n14c3.ms')`
+
   `>>> listobs(vis='n14c3.ms', listfile='n14c3.listobs')`
 
 - Check that the Tsys measurements and the gain curves made it into
@@ -30,13 +31,19 @@
   to an (ASCII) text file.
 
   `>>> tb.open('n14c3.ms/SYSCAL')`
+
   `>>> tb.nrows()`
+
   `40440`
+
   `>>> tb.toasciifmt('SYSCAL.txt')`
 
   `>>> tb.open('n14c3.ms/GAIN_CURVE')`
+
   `>>> tb.nrows()`
-  96
+
+  `96`
+
   `>>> tb.toasciifmt('GAIN_CURVE.txt')`
 
 - Save the current flagging state.
