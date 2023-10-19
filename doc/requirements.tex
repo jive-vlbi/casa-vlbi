@@ -58,9 +58,7 @@ general calibration infrastructure in CASA.
 
 \begin{enumerate}[seclist]
 
-\item Interpolation during application of various calibration tables
-  (including, but not limited to fringe fitting) should have the
-  capability of respecting scan boundaries.
+\item Completed for CASA 6.6.
 
 \item Completed for CASA 6.1.
 
@@ -245,44 +243,7 @@ through time can be used to extend the period of ambiguity resolution.
 
 \begin{enumerate}[subseclist]
 
-\item Import of Pulse Cal data shall be supported
-
-\begin{enumerate}[subsecsublist]
-
-\item Pulse cal data attached to a FITS file shall be importable.
-
-\item Each pulse cal measurement contains a real and imaginary value
-  and the time interval corresponding to that measurement.
-
-\item A pulse cal set is the collection of all pulse cal measurements
-  made over one time interval at one antenna.
-
-\end{enumerate}
-
-\item Between 0 and B+1 pulse cal tones per sub-band must be supported
-  where B is sub-band bandwidth in MHz.
-
-\item A cadence as fast as one pulse cal set per visibility
-  integration time should be supported.
-
-  Note: This requirement contradicts the example system given above
-  and probably needs to be changed.  Maybe ``faster than one pulse cal
-  set per visibility''?
-
-\item Time averaged pulse cal data should be supported; averaging
-  intervals may be integer multiples of the visibility integration
-  time or not.
-
-\item An optional ``cable cal'' value, containing an additional
-  instrumental delay correction, should be handled along with pulse
-  cal data.
-
-\item Different antennas may have different pulse cal intervals and/or
-  number of tones.
-
-\item Single precision floating point is sufficient for the real and
-  imaginary parts of each pulse cal measurement; time should be
-  accurately representable to at least 1ms.
+\item Completed for CASA 6.6
 
 \end{enumerate}
 
@@ -414,11 +375,11 @@ Additonal modes of operation shall be implemented for the
 
 \item It shall be possible to combine spectral windows (in order to do
   a multi-band fit) even if there are large gaps (in frequency)
-  between spectral windows.
+  between spectral windows.  (Completed for CASA 6.6, still experimental)
 
 \item It shall be possible to combine spectral windows even if the
   channels of different spectral windows do not align on a single
-  frequency grid.
+  frequency grid.  (Completed for CASA 6.6, still experimental)
 
   Note: A possible approach has been prototyped in Python by Des Small.
 
@@ -546,11 +507,18 @@ week or two after observation, which may be after correlation.
   model using updated EOPs instead of attempting to do a differential
   correction based on the difference in EOPs
 
+  Note: Prototype implementation exists; work is progressing to turn
+  this into a proper CASA task.
+
 \item A mechanism for automatically updating EOP data should be
   implemented.
 
   Note: VLBI correlators tend to use a different EOP data product than
   the IERS EOPs that are already present in the CASA data repository.
+
+  Note: IERS EOPs are almost certainly good enough to calculate the
+  differentials needed to apply the corrections with sufficient
+  accuracy.  Alternative EOP sources will be supported.
 
 \item Source position adjustment should be possible.
 
@@ -612,6 +580,10 @@ week or two after observation, which may be after correlation.
 \subsection{Generic}
 
 \begin{enumerate}[subseclist]
+
+\item Interpolation during application of various calibration tables
+  (including, but not limited to fringe fitting) should have the
+  capability of respecting scan boundaries.  (was 2.1, completed for CASA 6.6)
 
 \item Visibility data should be flagged in a polarization-independent
   fashion if desired by the user (currently CASA flags all
@@ -687,6 +659,54 @@ week or two after observation, which may be after correlation.
   equivalents) to the visibility data.
 
   Note: implemented in importfitsidi
+
+\end{enumerate}
+
+\subsection{Pulse Cal data handling}
+
+\subsubsection{Data Structure}
+
+\begin{enumerate}[subsubseclist]
+
+\item Import of Pulse Cal data shall be supported (was 4.1.1,
+  completed for CASA 6.6)
+
+\begin{enumerate}[subsubsecsublist]
+
+\item Pulse cal data attached to a FITS file shall be importable.
+
+\item Each pulse cal measurement contains a real and imaginary value
+  and the time interval corresponding to that measurement.
+
+\item A pulse cal set is the collection of all pulse cal measurements
+  made over one time interval at one antenna.
+
+\end{enumerate}
+
+\item Between 0 and B+1 pulse cal tones per sub-band must be supported
+  where B is sub-band bandwidth in MHz.
+
+\item A cadence as fast as one pulse cal set per visibility
+  integration time should be supported.
+
+  Note: This requirement contradicts the example system given above
+  and probably needs to be changed.  Maybe ``faster than one pulse cal
+  set per visibility''?
+
+\item Time averaged pulse cal data should be supported; averaging
+  intervals may be integer multiples of the visibility integration
+  time or not.
+
+\item An optional ``cable cal'' value, containing an additional
+  instrumental delay correction, should be handled along with pulse
+  cal data.
+
+\item Different antennas may have different pulse cal intervals and/or
+  number of tones.
+
+\item Single precision floating point is sufficient for the real and
+  imaginary parts of each pulse cal measurement; time should be
+  accurately representable to at least 1ms.
 
 \end{enumerate}
 
