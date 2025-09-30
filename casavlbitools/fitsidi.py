@@ -350,7 +350,12 @@ def process_gc_values(infp, keys, pols, idi, data):
         pols.add('L')
     except:
         dpfu['R'] = dpfu['L'] = keys['DPFU']
-        pols.add('X')
+        if idi.n_stokes > 1:
+            pols.add('R')
+            pols.add('L')
+        else:
+            pols.add('X')
+            pass
         pass
     try:
         value = keys['POLY'][0]
