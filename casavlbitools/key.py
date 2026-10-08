@@ -63,22 +63,22 @@ def s_comment(scanner, token): # was only used for debugging.
     return ('comment', token)
 
 scanner = re.Scanner([
-    ("\!.*\n", s_newline),
-    ("[ \t]+", None),
-    ("\n", s_newline),
-    ("\r\n", s_newline),
-    ("=", lambda s, t: ('equal',)),
-    ("'[^'\n]*'", s_quote), 
-    ("\"[^'\n]*\"", s_quote), # Sigh.  Double quotes used in freq.dat
-    ("/", lambda s, t: ('end_chunk',)),
-    (",", lambda s, t: ('comma',)),
-    ("[+-]?[0-9]+:[0-9]+:[0-9]+(.[0-9]*)?", s_angle),
-    ("[+-]?[0-9]+:[0-9]+(.[0-9]*)?", s_angle),
-    ("[+-]?[0-9]*\.[0-9]+([Ee][+-][0-9]{1,3})?(?![A-Za-z_0-9()])", s_number),
-    ("[+-]?[0-9]+\.?(?![A-Za-z_0-9()])", s_number),
+    (r"\!.*\n", s_newline),
+    (r"[ \t]+", None),
+    (r"\n", s_newline),
+    (r"\r\n", s_newline),
+    (r"=", lambda s, t: ('equal',)),
+    (r"'[^'\n]*'", s_quote),
+    (r"\"[^'\n]*\"", s_quote), # Sigh.  Double quotes used in freq.dat
+    (r"/", lambda s, t: ('end_chunk',)),
+    (r",", lambda s, t: ('comma',)),
+    (r"[+-]?[0-9]+:[0-9]+:[0-9]+(.[0-9]*)?", s_angle),
+    (r"[+-]?[0-9]+:[0-9]+(.[0-9]*)?", s_angle),
+    (r"[+-]?[0-9]*\.[0-9]+([Ee][+-][0-9]{1,3})?(?![A-Za-z_0-9()])", s_number),
+    (r"[+-]?[0-9]+\.?(?![A-Za-z_0-9()])", s_number),
     ## apparently parens and unquoted minus signs are allowed in keywords?
-    ("[A-Za-z.0-9]([()A-Za-z_0-9._+-]+)?", s_keyword), 
-    (".*", s_misc)
+    (r"[A-Za-z.0-9]([()A-Za-z_0-9._+-]+)?", s_keyword),
+    (r".*", s_misc)
 ])
 
 # Now have everything except arithmetic expressions.
