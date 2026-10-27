@@ -280,6 +280,9 @@ def process_values(infp, keys, pols, idi, data):
     timeoff = 0
     if 'TIMEOFF' in keys:
         timeoff = float(keys['TIMEOFF'])
+    scale = 1.0
+    if 'FT' in keys:
+        scale = float(keys['FT'])
     for line in infp:
         if line.startswith('!'):
             continue
@@ -306,6 +309,8 @@ def process_values(infp, keys, pols, idi, data):
                     except:
                         value = float(-999.9)
                         pass
+                    if value != -999.9:
+                        value *= scale
                     tsys[pol].append(value)
                     continue
                 continue
